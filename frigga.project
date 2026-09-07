@@ -1,0 +1,45 @@
+{
+  "version": 5,
+  "name": "MyGame",
+  "template": "3d",
+  "scene": "Scenes/main.json",
+  "publish": {
+    "displayName": "MyGame",
+    "executableName": "MyGame",
+    "publisher": "Frigga",
+    "copyright": "Copyright © Frigga",
+    "version": "1.0.0",
+    "identifier": "com.frigga.mygame",
+    "iconWindows": "",
+    "iconLinux": "",
+    "iconMacOS": ""
+  },
+  "modules": [
+    {
+      "id": "charactermovement",
+      "target": "charactermovement",
+      "library": "build/libcharactermovement.so",
+      "enabled": true,
+      "source": "user"
+    },
+    {
+      "id": "thirdpersoncamera",
+      "target": "thirdpersoncamera",
+      "library": "build/libthirdpersoncamera.so",
+      "enabled": true,
+      "source": "user"
+    },
+    {
+      "id": "pokemon",
+      "target": "pokemon",
+      "library": "build/libpokemon.so",
+      "enabled": true,
+      "source": "project"
+    }
+  ],
+  "engine": {
+    "friggaSdk": "/home/gilmar/dev/Frigga/build/Sdk",
+    "friggaRoot": "/home/gilmar/dev/Frigga/build/Sdk",
+    "friggaBuild": "/home/gilmar/dev/Frigga/build/Sdk"
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "actions": {
+    "Jump": {
+    "keys": ["Space"],
+    "mouseButtons": [],
+    "gamepadButtons": ["South"]
+    },
+    "Move4": {
+    "keys": ["V"],
+    "mouseButtons": [],
+    "gamepadButtons": []
+    },
+    "Sprint": {
+    "keys": ["LShift"],
+    "mouseButtons": [],
+    "gamepadButtons": ["LeftStick"]
+    },
+    "Fire": {
+    "keys": [],
+    "mouseButtons": ["Left"],
+    "gamepadButtons": ["RightShoulder"]
+    },
+    "Move1": {
+    "keys": ["Z"],
+    "mouseButtons": [],
+    "gamepadButtons": ["West"]
+    },
+    "UseOranBerry": {
+    "keys": ["G"],
+    "mouseButtons": [],
+    "gamepadButtons": []
+    },
+    "Move2": {
+    "keys": ["X"],
+    "mouseButtons": [],
+    "gamepadButtons": ["North"]
+    },
+    "Move3": {
+    "keys": ["C"],
+    "mouseButtons": [],
+    "gamepadButtons": ["East"]
+    },
+    "UsePotion": {
+    "keys": ["Q"],
+    "mouseButtons": [],
+    "gamepadButtons": []
+    },
+    "UseStaminaBerry": {
+    "keys": ["F"],
+    "mouseButtons": [],
+    "gamepadButtons": []
+    }
+  },
+  "axes": {
+    "Horizontal": {
+    "negativeKeys": ["A", "Left"],
+    "positiveKeys": ["D", "Right"],
+    "gamepadAxis": "LeftX",
+    "deadzone": 0.15,
+    "scale": 1,
+    "mouseScale": 1,
+    "invertGamepad": false,
+    "invertMouse": false
+    },
+    "LookY": {
+    "negativeKeys": [],
+    "positiveKeys": [],
+    "gamepadAxis": "RightY",
+    "mouseAxis": "DeltaY",
+    "deadzone": 0.15,
+    "scale": 180,
+    "mouseScale": 0.15,
+    "invertGamepad": true,
+    "invertMouse": true
+    },
+    "Vertical": {
+    "negativeKeys": ["S", "Down"],
+    "positiveKeys": ["W", "Up"],
+    "gamepadAxis": "LeftY",
+    "deadzone": 0.15,
+    "scale": 1,
+    "mouseScale": 1,
+    "invertGamepad": true,
+    "invertMouse": false
+    },
+    "LookX": {
+    "negativeKeys": [],
+    "positiveKeys": [],
+    "gamepadAxis": "RightX",
+    "mouseAxis": "DeltaX",
+    "deadzone": 0.15,
+    "scale": 180,
+    "mouseScale": 0.15,
+    "invertGamepad": false,
+    "invertMouse": false
+    },
+    "Zoom": {
+    "negativeKeys": [],
+    "positiveKeys": [],
+    "mouseAxis": "Scroll",
+    "deadzone": 0.15,
+    "scale": 1,
+    "mouseScale": 1,
+    "invertGamepad": false,
+    "invertMouse": false
+    }
+  }
+}

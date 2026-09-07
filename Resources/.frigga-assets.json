@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "assets": [
+    {"path":"Models/bulbasaur.glb","type":"model","guid":"asset-ba8897a7fa890e45","sourceSize":728812,"sourceHash":5846715544560772344,"sourceTimestamp":-4648856703789701768,"settings":"","dependencies":[]},
+    {"path":"Textures/bodyA.png","type":"texture","guid":"asset-023ab5fae5e78623","sourceSize":2430863,"sourceHash":16493769644867122562,"sourceTimestamp":-4648856528644097344,"settings":"","dependencies":[]},
+    {"path":"Textures/bodyB.png","type":"texture","guid":"asset-e01dc407b5ec7e76","sourceSize":1169772,"sourceHash":14851389075295916659,"sourceTimestamp":-4648856532811875770,"settings":"","dependencies":[]},
+    {"path":"Textures/eye.png","type":"texture","guid":"asset-59cfe3ebcda20a75","sourceSize":1166415,"sourceHash":11187031422168548464,"sourceTimestamp":-4648856576047677875,"settings":"","dependencies":[]}
+  ]
+}

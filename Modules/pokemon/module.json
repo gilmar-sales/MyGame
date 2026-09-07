@@ -1,0 +1,7 @@
+{
+  "id": "pokemon",
+  "name": "pokemon",
+  "target": "pokemon",
+  "library": "build/libpokemon.so",
+  "bundled": false
+}
