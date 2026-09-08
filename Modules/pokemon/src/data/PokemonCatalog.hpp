@@ -27,8 +27,11 @@ struct MoveDef
     float            recoilDistance  = 0.0f;
     float            recoilDuration  = 0.0f;
     /// Physics charge (headbutt): drive CharacterController velocity into the target.
-    /// Knockback on hit is left entirely to the physics contact response.
     float            chargeSpeed       = 0.0f;
+    /// On hit: lock target movement/moves so knockback can resolve.
+    float            stunDuration      = 0.0f;
+    /// Planar knockback speed on confirmed physics collision with the target (headbutt).
+    float            knockbackSpeed    = 0.0f;
     /// Homing/ballistic projectiles (razor leaf burst / leech seed orb).
     int              projectileCount = 0;
     float            projectileSpeed = 0.0f;

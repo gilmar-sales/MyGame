@@ -5,6 +5,7 @@
 #include <Frigga/ECS/Components/AnimatorComponent.hpp>
 #include <Frigga/ECS/Components/HierarchyComponent.hpp>
 #include <Frigga/ECS/Components/NameComponent.hpp>
+#include <Frigga/ECS/Components/RigidBodyComponent.hpp>
 #include <Frigga/ECS/Components/TransformComponent.hpp>
 #include <Frigga/ECS/TransformUtil.hpp>
 
@@ -135,7 +136,8 @@ void CharacterMovementSystem::Update(float deltaTime)
         });
 
     mRegistry->CreateMutation()->Each(
-        [&](fr::Entity entity, fg::NameComponent &name, CharacterControllerComponent &controller) {
+        [&](fr::Entity entity, fg::NameComponent &name, CharacterControllerComponent &controller,
+            fg::RigidBodyComponent &) {
             if(name.name != "Player")
             {
                 return;
@@ -143,14 +145,8 @@ void CharacterMovementSystem::Update(float deltaTime)
 
             if(controller.locomotionLocked)
             {
-                // Force a loco CrossFade after combat releases the Animator.
+                // Combat / stun / KO own velocity — do not zero here or physics knockback dies.
                 mCurrentClip.clear();
-                if(mPhysics)
-                {
-                    const glm::vec3 v = mPhysics->GetCharacterVelocity(entity);
-                    mPhysics->MoveCharacter(entity, {0.0f, v.y, 0.0f});
-                    mPhysics->SetLinearVelocity(entity, {0.0f, 0.0f, 0.0f});
-                }
                 return;
             }
 

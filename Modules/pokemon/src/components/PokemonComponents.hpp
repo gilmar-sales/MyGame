@@ -107,6 +107,9 @@ struct PokemonStatus: fr::Component
     bool         leechSeeding      = false;
     float        leechSeedingTimer = 0.0f;
     std::int64_t leechSeedTarget   = -1;
+
+    /// Headbutt (and similar): brief lock so physics repulsion is not overridden by loco/AI.
+    float        stunTimer = 0.0f;
 };
 
 /// Runtime damaging / status orbs (razor leaf flakes, leech seed).

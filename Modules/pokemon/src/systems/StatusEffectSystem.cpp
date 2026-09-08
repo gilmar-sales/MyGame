@@ -1,6 +1,7 @@
 #include "systems/StatusEffectSystem.hpp"
 
 #include "components/PokemonComponents.hpp"
+#include "systems/PokemonCombatUtil.hpp"
 
 #include <algorithm>
 
@@ -36,6 +37,32 @@ void StatusEffectSystem::Update(float deltaTime)
 
     mRegistry->CreateMutation()->Each(
         [&](fr::Entity entity, PokemonVitals &vitals, PokemonStatus &status) {
+            // Headbutt stun: brief lock so locomotion/AI do not cancel physics shove.
+            if(status.stunTimer > 0.0f)
+            {
+                status.stunTimer -= deltaTime;
+                if(status.stunTimer <= 0.0f)
+                {
+                    status.stunTimer = 0.0f;
+                    if(!vitals.knockedOut)
+                    {
+                        bool keepLocked = false;
+                        if(mRegistry->HasComponent<PokemonCombatState>(entity))
+                        {
+                            mRegistry->TryGetComponents<PokemonCombatState>(
+                                entity, [&](PokemonCombatState &combat) {
+                                    keepLocked = combat.phase != PokemonCombat::kPhaseIdle ||
+                                                 combat.savedMaxStrength >= 0.0f;
+                                });
+                        }
+                        if(!keepLocked)
+                        {
+                            PokemonCombat::SetLocomotionLocked(*mRegistry, entity, false);
+                        }
+                    }
+                }
+            }
+
             // Caster-side Leech Seed status (linked heal source).
             if(status.leechSeeding)
             {

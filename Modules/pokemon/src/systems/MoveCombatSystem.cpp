@@ -33,6 +33,10 @@ void MoveCombatSystem::Update(float deltaTime)
                                     fg::TransformUtil::WorldPose(*mRegistry, entity).position);
         });
 
+    // Physics contacts from the last fixed step (caster CharacterVirtual vs target presence RB).
+    const std::vector<fg::PhysicsContactEvent> contacts =
+        mPhysics ? mPhysics->DrainContactEvents() : std::vector<fg::PhysicsContactEvent> {};
+
     struct PendingSpawn
     {
         fr::Entity owner = fg::kInvalidEntity;
@@ -106,10 +110,10 @@ void MoveCombatSystem::Update(float deltaTime)
                 combat.busyTimer = 0.25f;
             };
 
-            auto applyHitIfNeeded = [&](const glm::vec3 &probePos) {
+            auto applyHitIfNeeded = [&](const glm::vec3 &probePos) -> bool {
                 if(combat.damageApplied)
                 {
-                    return;
+                    return false;
                 }
                 const glm::vec3 probe =
                     probePos + glm::vec3 {0.0f, 0.6f, 0.0f} + forward * 0.35f;
@@ -117,11 +121,12 @@ void MoveCombatSystem::Update(float deltaTime)
                     *mRegistry, mPhysics, entity, probe, forward, *def, candidates);
                 if(target == fg::kInvalidEntity)
                 {
-                    return;
+                    return false;
                 }
-                PokemonCombat::ApplyDamage(*mRegistry, mAnimation, entity, target, *def);
+                PokemonCombat::ApplyDamage(*mRegistry, mPhysics, mAnimation, entity, target, *def);
                 combat.hitTarget     = static_cast<std::int64_t>(target);
                 combat.damageApplied = true;
+                return true;
             };
 
             // --- Charge (Solar Beam) ---
@@ -154,7 +159,7 @@ void MoveCombatSystem::Update(float deltaTime)
                     }
                 }
 
-                // Physics charge: only the caster is driven; contact shove is left to Jolt.
+                // Physics charge: drive caster; hit + knockback only on real body contact.
                 if(def->chargeSpeed > 0.0f && mPhysics)
                 {
                     const float duration = std::max(def->lungeDuration, 0.05f);
@@ -172,8 +177,21 @@ void MoveCombatSystem::Update(float deltaTime)
                     chargeVel.y            = current.y;
                     mPhysics->MoveCharacter(entity, chargeVel);
 
-                    // Damage once on contact; keep charging so CharacterVirtual can push.
-                    applyHitIfNeeded(pos);
+                    if(!combat.damageApplied)
+                    {
+                        const fr::Entity target = PokemonCombat::FindHostileContactTarget(
+                            *mRegistry, entity, contacts, candidates);
+                        if(target != fg::kInvalidEntity)
+                        {
+                            PokemonCombat::ApplyDamage(*mRegistry, mPhysics, mAnimation, entity,
+                                                       target, *def, 1.0f,
+                                                       /*applyKnockback=*/true);
+                            combat.hitTarget     = static_cast<std::int64_t>(target);
+                            combat.damageApplied = true;
+                            finishAndCooldown();
+                            return;
+                        }
+                    }
 
                     const bool timedOut =
                         combat.motionT >= 1.0f || combat.phaseTimer <= 0.0f ||

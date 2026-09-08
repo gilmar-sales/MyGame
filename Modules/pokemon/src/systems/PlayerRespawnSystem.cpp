@@ -75,6 +75,7 @@ void PlayerRespawnSystem::Respawn(fr::Entity player)
             status.leechSeeding      = false;
             status.leechSeedingTimer = 0.0f;
             status.leechSeedTarget   = -1;
+            status.stunTimer         = 0.0f;
         });
     }
 

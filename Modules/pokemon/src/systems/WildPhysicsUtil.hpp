@@ -2,8 +2,10 @@
 
 #include <CharacterControllerComponent.hpp>
 
+#include <Frigga/ECS/Components/RigidBodyComponent.hpp>
 #include <Frigga/ECS/Components/TransformComponent.hpp>
 #include <Frigga/ECS/TransformUtil.hpp>
+#include <Frigga/Physics/CharacterPhysics.hpp>
 #include <Frigga/Physics/IPhysicsWorld.hpp>
 #include <Frigga/Physics/PhysicsTypes.hpp>
 
@@ -15,10 +17,39 @@
 
 namespace WildPhysics
 {
-    // Match Player CharacterControllerComponent (Scenes/main.json).
+    // Match Player CharacterController + RigidBody capsule (Scenes/main.json).
     inline constexpr float kRadius = 0.5f;
     inline constexpr float kHeight = 0.05f;
     inline constexpr float kMass   = 70.0f;
+
+    inline void EnsureRigidBody(fr::Registry &registry, fr::Entity entity)
+    {
+        if(!registry.HasComponent<fg::RigidBodyComponent>(entity))
+        {
+            registry.AddComponents(entity,
+                                   fg::RigidBodyComponent {
+                                       .motion            = fg::BodyMotionType::Kinematic,
+                                       .shape             = fg::ColliderShape::Capsule,
+                                       .radius            = kRadius,
+                                       .height            = kHeight,
+                                       .mass              = kMass,
+                                       .collisionLayer    = 1,
+                                       .collideWithLayers = 0xffff,
+                                   });
+            registry.ExecuteTasks();
+            return;
+        }
+
+        registry.TryGetComponents<fg::RigidBodyComponent>(entity, [&](fg::RigidBodyComponent &rb) {
+            rb.motion            = fg::BodyMotionType::Kinematic;
+            rb.shape             = fg::ColliderShape::Capsule;
+            rb.radius            = kRadius;
+            rb.height            = kHeight;
+            rb.mass              = kMass;
+            rb.collisionLayer    = 1;
+            rb.collideWithLayers = 0xffff;
+        });
+    }
 
     inline void AttachCharacter(fr::Registry &registry, const skr::Arc<fg::IPhysicsWorld> &world,
                                 fr::Entity entity)
@@ -33,61 +64,74 @@ namespace WildPhysics
             return;
         }
 
+        EnsureRigidBody(registry, entity);
+
         if(!registry.HasComponent<CharacterControllerComponent>(entity))
         {
             registry.AddComponents(entity,
                                    CharacterControllerComponent {
-                                       .radius               = kRadius,
-                                       .height               = kHeight,
                                        .maxSlopeDegrees      = 45.0f,
-                                       .mass                 = kMass,
                                        .maxStrength          = 100.0f,
-                                       .centerOffset         = {0.0f, 0.0f, 0.0f},
                                        .stickToFloorDistance = 0.5f,
                                        .walkStairsStepHeight = 0.4f,
-                                       .collisionLayer       = 1,
-                                       .collideWithLayers    = 0xffff,
                                        .locomotionLocked     = false,
                                    });
             registry.ExecuteTasks();
         }
 
         const auto pose = fg::TransformUtil::WorldPose(registry, entity);
+
+        fg::PhysicsBodyHandle presenceBody {};
+        registry.TryGetComponents<fg::RigidBodyComponent>(entity, [&](fg::RigidBodyComponent &rb) {
+            if(rb.body.IsValid())
+            {
+                world->DestroyBody(rb.body);
+                rb.body.Reset();
+            }
+            fg::PhysicsBodyDesc bodyDesc {};
+            bodyDesc.motion            = fg::BodyMotionType::Kinematic;
+            bodyDesc.shape             = fg::ColliderShape::Capsule;
+            bodyDesc.position          = pose.position;
+            bodyDesc.rotation          = pose.rotation;
+            bodyDesc.radius            = rb.radius;
+            bodyDesc.height            = rb.height;
+            bodyDesc.centerOffset      = rb.centerOffset;
+            bodyDesc.mass              = rb.mass;
+            bodyDesc.friction          = rb.friction;
+            bodyDesc.restitution       = rb.restitution;
+            bodyDesc.collisionLayer    = rb.collisionLayer;
+            bodyDesc.collideWithLayers = rb.collideWithLayers;
+            bodyDesc.entityId          = static_cast<std::uint64_t>(entity);
+            rb.body                    = world->CreateBody(bodyDesc);
+            presenceBody               = rb.body;
+        });
+
         fg::PhysicsCharacterDesc desc {};
         desc.position              = pose.position;
         desc.rotation              = pose.rotation;
-        desc.radius                = kRadius;
-        desc.height                = kHeight;
         desc.maxSlopeDegrees       = 45.0f;
-        desc.mass                  = kMass;
         desc.maxStrength           = 100.0f;
-        desc.centerOffset          = {};
         desc.stickToFloorDistance  = 0.5f;
         desc.walkStairsStepHeight  = 0.4f;
-        desc.collisionLayer        = 1;
-        desc.collideWithLayers     = 0xffff;
+
+        registry.TryGetComponents<fg::RigidBodyComponent>(
+            entity, [&](fg::RigidBodyComponent &rb) { fg::ApplyRigidBodyToCharacterDesc(desc, rb); });
 
         if(registry.HasComponent<CharacterControllerComponent>(entity))
         {
             registry.TryGetComponents<CharacterControllerComponent>(
                 entity, [&](CharacterControllerComponent &cc) {
-                    desc.radius               = cc.radius;
-                    desc.height               = cc.height;
                     desc.maxSlopeDegrees      = cc.maxSlopeDegrees;
-                    desc.mass                 = cc.mass;
                     desc.maxStrength          = cc.maxStrength;
-                    desc.centerOffset         = cc.centerOffset;
                     desc.stickToFloorDistance = cc.stickToFloorDistance;
                     desc.walkStairsStepHeight = cc.walkStairsStepHeight;
-                    desc.collisionLayer       = cc.collisionLayer;
-                    desc.collideWithLayers    = cc.collideWithLayers;
                 });
         }
 
         const auto handle = world->CreateCharacter(desc);
         if(handle.IsValid())
         {
-            world->BindCharacter(static_cast<std::uint64_t>(entity), handle);
+            world->BindCharacter(static_cast<std::uint64_t>(entity), handle, presenceBody);
         }
     }
 
@@ -104,6 +148,16 @@ namespace WildPhysics
             world->DestroyCharacter(handle);
         }
         world->UnbindCharacter(static_cast<std::uint64_t>(entity));
-        (void)registry;
+
+        if(registry.HasComponent<fg::RigidBodyComponent>(entity))
+        {
+            registry.TryGetComponents<fg::RigidBodyComponent>(entity, [&](fg::RigidBodyComponent &rb) {
+                if(rb.body.IsValid())
+                {
+                    world->DestroyBody(rb.body);
+                    rb.body.Reset();
+                }
+            });
+        }
     }
 } // namespace WildPhysics

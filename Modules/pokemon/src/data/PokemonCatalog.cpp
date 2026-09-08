@@ -32,6 +32,8 @@ namespace
                  .lungeDistance    = 2.5f,
                  .lungeDuration    = 0.34f,
                  .chargeSpeed      = 10.0f,
+                 .stunDuration     = 0.55f,
+                 .knockbackSpeed   = 9.0f,
                  .animClip  = "001fight_b"},
         MoveDef {.id        = "razor_leaf",
                  .element   = ElementType::Grass,

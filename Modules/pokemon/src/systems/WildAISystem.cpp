@@ -207,6 +207,13 @@ void WildAISystem::Update(float deltaTime)
                 return;
             }
 
+            if(PokemonCombat::IsStunned(*mRegistry, entity))
+            {
+                // Let physics knockback resolve — do not zero velocity or steer.
+                ai.locoClip.clear();
+                return;
+            }
+
             if(combat.phase != PokemonCombat::kPhaseIdle)
             {
                 // Fight anim owns the animator while a move is resolving.

@@ -13,6 +13,7 @@
 #include <Frigga/ECS/Components/AnimatorComponent.hpp>
 #include <Frigga/ECS/Components/HierarchyComponent.hpp>
 #include <Frigga/ECS/Components/NameComponent.hpp>
+#include <Frigga/ECS/Components/RigidBodyComponent.hpp>
 #include <Frigga/ECS/Components/TransformComponent.hpp>
 #include <Frigga/ECS/TransformUtil.hpp>
 #include <Frigga/Physics/Physics.hpp>
@@ -314,12 +315,79 @@ namespace PokemonCombat
         });
     }
 
+    [[nodiscard]] inline bool IsStunned(fr::Registry &registry, fr::Entity entity)
+    {
+        bool stunned = false;
+        if(registry.HasComponent<PokemonStatus>(entity))
+        {
+            registry.TryGetComponents<PokemonStatus>(
+                entity, [&](PokemonStatus &status) { stunned = status.stunTimer > 0.0f; });
+        }
+        return stunned;
+    }
+
+    inline void ApplyStun(fr::Registry &registry, const skr::Arc<fg::Physics> &physics,
+                          fr::Entity entity, float duration)
+    {
+        if(duration <= 0.0f || !registry.HasComponent<PokemonStatus>(entity))
+        {
+            return;
+        }
+
+        registry.TryGetComponents<PokemonStatus>(entity, [&](PokemonStatus &status) {
+            status.stunTimer = std::max(status.stunTimer, duration);
+        });
+        SetLocomotionLocked(registry, entity, true);
+
+        // Interrupt any in-progress move so AI/player control does not resume mid-knockback.
+        if(registry.HasComponent<PokemonCombatState>(entity))
+        {
+            registry.TryGetComponents<PokemonCombatState>(
+                entity, [&](PokemonCombatState &combat) {
+                    if(combat.savedMaxStrength >= 0.0f)
+                    {
+                        RestorePhysicsCharge(registry, physics, entity, combat);
+                    }
+                    combat.phase         = kPhaseIdle;
+                    combat.pendingSlot   = -1;
+                    combat.hitTarget     = -1;
+                    combat.damageApplied = false;
+                    combat.phaseTimer    = 0.0f;
+                    combat.busyTimer     = 0.0f;
+                    combat.motionT       = 0.0f;
+                    combat.activeMove.clear();
+                });
+        }
+    }
+
+    inline void ApplyKnockback(const skr::Arc<fg::Physics> &physics, fr::Entity defender,
+                               const glm::vec3 &fromAttacker, float speed)
+    {
+        if(!physics || speed <= 0.0f)
+        {
+            return;
+        }
+        glm::vec3 dir {fromAttacker.x, 0.0f, fromAttacker.z};
+        const float len = glm::length(dir);
+        if(len < 1e-4f)
+        {
+            dir = {0.0f, 0.0f, 1.0f};
+        }
+        else
+        {
+            dir /= len;
+        }
+        const glm::vec3 current = physics->GetCharacterVelocity(defender);
+        physics->MoveCharacter(defender, {dir.x * speed, current.y, dir.z * speed});
+    }
+
     /// Starts a move slot if idle, off cooldown, and has stamina. Returns true on success.
     inline bool TryStartMove(fr::Registry &registry, fr::Entity entity, PokemonVitals &vitals,
                              PokemonMoveset &moves, PokemonCombatState &combat, int slot,
                              const glm::vec3 &forwardOverride = {})
     {
-        if(vitals.knockedOut || combat.phase != kPhaseIdle || combat.busyTimer > 0.0f)
+        if(vitals.knockedOut || combat.phase != kPhaseIdle || combat.busyTimer > 0.0f ||
+           IsStunned(registry, entity))
         {
             return false;
         }
@@ -380,9 +448,94 @@ namespace PokemonCombat
         return true;
     }
 
-    inline bool ApplyDamage(fr::Registry &registry,
+    [[nodiscard]] inline float PresenceRadius(fr::Registry &registry, fr::Entity entity)
+    {
+        float radius = 0.5f;
+        if(registry.HasComponent<fg::RigidBodyComponent>(entity))
+        {
+            registry.TryGetComponents<fg::RigidBodyComponent>(
+                entity, [&](fg::RigidBodyComponent &rb) {
+                    radius = std::max(rb.radius, 0.05f);
+                    if(rb.shape == fg::ColliderShape::Box)
+                    {
+                        radius = std::max({rb.halfExtents.x, rb.halfExtents.z, radius});
+                    }
+                });
+        }
+        return radius;
+    }
+
+    /// Prefer physics contact events; fall back to linked RigidBody capsule overlap (CC vs CC).
+    [[nodiscard]] inline fr::Entity FindHostileContactTarget(
+        fr::Registry &registry, fr::Entity caster,
+        const std::vector<fg::PhysicsContactEvent> &contacts,
+        const std::vector<std::pair<fr::Entity, glm::vec3>> &candidates = {})
+    {
+        for(const auto &contact : contacts)
+        {
+            fr::Entity other = fg::kInvalidEntity;
+            if(contact.entityA == static_cast<std::uint64_t>(caster))
+            {
+                other = static_cast<fr::Entity>(contact.entityB);
+            }
+            else if(contact.entityB == static_cast<std::uint64_t>(caster))
+            {
+                other = static_cast<fr::Entity>(contact.entityA);
+            }
+            else
+            {
+                continue;
+            }
+
+            if(other == fg::kInvalidEntity || other == caster)
+            {
+                continue;
+            }
+            if(!registry.HasComponent<PokemonVitals>(other) || !IsHostile(registry, caster, other))
+            {
+                continue;
+            }
+
+            bool ko = false;
+            registry.TryGetComponents<PokemonVitals>(other,
+                                                     [&](PokemonVitals &v) { ko = v.knockedOut; });
+            if(!ko)
+            {
+                return other;
+            }
+        }
+
+        if(candidates.empty() || !registry.HasComponent<fg::TransformComponent>(caster))
+        {
+            return fg::kInvalidEntity;
+        }
+
+        const glm::vec3 casterPos = fg::TransformUtil::WorldPose(registry, caster).position;
+        const float     casterR   = PresenceRadius(registry, caster);
+        fr::Entity      best      = fg::kInvalidEntity;
+        float           bestDist  = 1e9f;
+        for(const auto &[entity, pos] : candidates)
+        {
+            if(entity == caster || !IsHostile(registry, caster, entity))
+            {
+                continue;
+            }
+            const float limit = casterR + PresenceRadius(registry, entity) + 0.08f;
+            const float dist =
+                glm::length(glm::vec3 {pos.x - casterPos.x, 0.0f, pos.z - casterPos.z});
+            if(dist <= limit && dist < bestDist)
+            {
+                bestDist = dist;
+                best     = entity;
+            }
+        }
+        return best;
+    }
+
+    inline bool ApplyDamage(fr::Registry &registry, const skr::Arc<fg::Physics> &physics,
                             const skr::Arc<fg::AnimationController> &animation, fr::Entity attacker,
-                            fr::Entity defender, const MoveDef &move, float powerScale = 1.0f)
+                            fr::Entity defender, const MoveDef &move, float powerScale = 1.0f,
+                            bool applyKnockback = false)
     {
         if(!registry.HasComponent<PokemonVitals>(defender) ||
            !registry.HasComponent<PokemonStats>(attacker) ||
@@ -444,6 +597,24 @@ namespace PokemonCombat
                         {
                             defVitals.knockedOut = true;
                             PlayKoAnim(registry, animation, defender);
+                        }
+                        else
+                        {
+                            if(move.stunDuration > 0.0f)
+                            {
+                                ApplyStun(registry, physics, defender, move.stunDuration);
+                            }
+                            // Knockback only when the caller confirmed a physics collision.
+                            if(applyKnockback && move.knockbackSpeed > 0.0f)
+                            {
+                                const auto atkPose =
+                                    fg::TransformUtil::WorldPose(registry, attacker);
+                                const auto defPose =
+                                    fg::TransformUtil::WorldPose(registry, defender);
+                                ApplyKnockback(physics, defender,
+                                               defPose.position - atkPose.position,
+                                               move.knockbackSpeed);
+                            }
                         }
                         NoteAttacker(registry, attacker, defender);
                         dealt = dmg > 0 || typeMult > 0.0f;
@@ -534,7 +705,7 @@ namespace PokemonCombat
             FindTarget(registry, physics, attacker, origin, forward, move, candidates);
         if(target != fg::kInvalidEntity)
         {
-            ApplyDamage(registry, animation, attacker, target, move);
+            ApplyDamage(registry, physics, animation, attacker, target, move);
         }
     }
 } // namespace PokemonCombat

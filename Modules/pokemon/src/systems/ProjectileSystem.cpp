@@ -129,7 +129,7 @@ void ProjectileSystem::Update(float deltaTime)
             }
             else
             {
-                PokemonCombat::ApplyDamage(*mRegistry, mAnimation, owner, hit, *def,
+                PokemonCombat::ApplyDamage(*mRegistry, mPhysics, mAnimation, owner, hit, *def,
                                            proj.damageScale);
             }
 
