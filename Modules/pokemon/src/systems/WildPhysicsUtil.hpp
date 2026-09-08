@@ -4,15 +4,12 @@
 
 #include <Frigga/ECS/Components/RigidBodyComponent.hpp>
 #include <Frigga/ECS/Components/TransformComponent.hpp>
-#include <Frigga/ECS/TransformUtil.hpp>
-#include <Frigga/Physics/IPhysicsWorld.hpp>
-#include <Frigga/Physics/PhysicsTypes.hpp>
+#include <Frigga/Physics/Physics.hpp>
 
 #include <Freyr/Freyr.hpp>
 #include <Skirnir/Skirnir.hpp>
 
 #include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
 
 namespace WildPhysics
 {
@@ -64,13 +61,13 @@ namespace WildPhysics
         });
     }
 
-    /// Ensure Dynamic RigidBody + CharacterController; create the body if Play already started.
-    inline void AttachCharacter(fr::Registry &registry, const skr::Arc<fg::IPhysicsWorld> &world,
+    /// Ensure Dynamic Sphere RB + CharacterController + live Jolt body (mid-play safe).
+    inline bool AttachCharacter(fr::Registry &registry, const skr::Arc<fg::Physics> &physics,
                                 fr::Entity entity)
     {
         if(!registry.HasComponent<fg::TransformComponent>(entity))
         {
-            return;
+            return false;
         }
 
         EnsureRigidBody(registry, entity);
@@ -85,62 +82,19 @@ namespace WildPhysics
             registry.ExecuteTasks();
         }
 
-        if(!world)
+        if(!physics)
         {
-            return;
+            return false;
         }
-
-        bool hasBody = false;
-        registry.TryGetComponents<fg::RigidBodyComponent>(entity, [&](fg::RigidBodyComponent &rb) {
-            hasBody = rb.body.IsValid();
-        });
-        if(hasBody)
-        {
-            return;
-        }
-
-        const auto pose = fg::TransformUtil::WorldPose(registry, entity);
-        registry.TryGetComponents<fg::RigidBodyComponent>(entity, [&](fg::RigidBodyComponent &rb) {
-            fg::PhysicsBodyDesc bodyDesc {};
-            bodyDesc.motion            = fg::BodyMotionType::Dynamic;
-            bodyDesc.shape             = fg::ColliderShape::Sphere;
-            bodyDesc.position          = pose.position;
-            bodyDesc.rotation          = pose.rotation;
-            bodyDesc.halfExtents       = rb.halfExtents;
-            bodyDesc.radius            = rb.radius;
-            bodyDesc.height            = rb.height;
-            bodyDesc.centerOffset      = rb.centerOffset;
-            bodyDesc.mass              = rb.mass;
-            bodyDesc.friction          = rb.friction;
-            bodyDesc.restitution       = rb.restitution;
-            bodyDesc.collisionLayer    = rb.collisionLayer;
-            bodyDesc.collideWithLayers = rb.collideWithLayers;
-            bodyDesc.isSensor          = rb.isSensor;
-            bodyDesc.entityId          = static_cast<std::uint64_t>(entity);
-            bodyDesc.lockRotationX     = true;
-            bodyDesc.lockRotationY     = true;
-            bodyDesc.lockRotationZ     = true;
-            rb.body                    = world->CreateBody(bodyDesc);
-        });
+        return physics->EnsureBody(entity, /*lockRotation=*/true);
     }
 
-    inline void DestroyCharacter(fr::Registry &registry, const skr::Arc<fg::IPhysicsWorld> &world,
+    inline void DestroyCharacter(fr::Registry &, const skr::Arc<fg::Physics> &physics,
                                  fr::Entity entity)
     {
-        if(!world)
+        if(physics)
         {
-            return;
-        }
-
-        if(registry.HasComponent<fg::RigidBodyComponent>(entity))
-        {
-            registry.TryGetComponents<fg::RigidBodyComponent>(entity, [&](fg::RigidBodyComponent &rb) {
-                if(rb.body.IsValid())
-                {
-                    world->DestroyBody(rb.body);
-                    rb.body.Reset();
-                }
-            });
+            physics->DestroyBody(entity);
         }
     }
 } // namespace WildPhysics

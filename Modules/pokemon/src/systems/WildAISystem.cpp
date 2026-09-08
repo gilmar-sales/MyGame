@@ -35,38 +35,34 @@ namespace
         return dist(rng);
     }
 
-    void FaceFlat(fr::Registry &registry, const skr::Arc<fg::Physics> &physics, fr::Entity entity,
+    void FaceFlat(fr::Registry &, const skr::Arc<fg::Physics> &physics, fr::Entity entity,
                   const glm::vec3 &dirFlat)
     {
-        if(glm::dot(dirFlat, dirFlat) < 1e-6f)
+        if(glm::dot(dirFlat, dirFlat) < 1e-6f || !physics)
         {
             return;
         }
         const glm::vec3 n   = glm::normalize(glm::vec3 {dirFlat.x, 0.0f, dirFlat.z});
         const glm::quat rot = glm::quatLookAt(-n, glm::vec3 {0.0f, 1.0f, 0.0f});
-        const auto      pose = fg::TransformUtil::WorldPose(registry, entity);
-        fg::TransformUtil::SetWorldPose(registry, entity, pose.position, rot);
-        if(physics)
-        {
-            physics->SetCharacterFacing(entity, rot);
-        }
+        physics->SetCharacterFacing(entity, rot);
     }
 
     void MoveFlat(fr::Registry &registry, const skr::Arc<fg::Physics> &physics, fr::Entity entity,
                   const glm::vec3 &planarVel, float dt)
     {
-        FaceFlat(registry, physics, entity, planarVel);
         if(!physics)
         {
             return;
         }
 
-        // Gameplay drives XZ only; Y stays with physics gravity unless something else sets it.
+        WildPhysics::AttachCharacter(registry, physics, entity);
+        FaceFlat(registry, physics, entity, planarVel);
+
+        // Gameplay drives XZ only; Y stays with physics gravity.
         const glm::vec3 current = physics->GetCharacterVelocity(entity);
         glm::vec3       desired {planarVel.x, current.y, planarVel.z};
         physics->MoveCharacter(entity, desired);
         (void)dt;
-        (void)registry;
     }
 
     void PlayLoco(fr::Registry &registry, const skr::Arc<fg::AnimationController> &animation,
@@ -122,9 +118,8 @@ namespace
 
 WildAISystem::WildAISystem(const skr::Arc<fr::Registry> &registry,
                            const skr::Arc<fg::Physics> &physics,
-                           const skr::Arc<fg::AnimationController> &animation,
-                           const skr::Arc<fg::IPhysicsWorld> &world)
-    : fr::System(registry), mPhysics(physics), mAnimation(animation), mWorld(world)
+                           const skr::Arc<fg::AnimationController> &animation)
+    : fr::System(registry), mPhysics(physics), mAnimation(animation)
 {
 }
 
@@ -396,7 +391,7 @@ void WildAISystem::Update(float deltaTime)
     {
         if(mRegistry->HasComponent<WildPokemonAI>(entity))
         {
-            WildPhysics::DestroyCharacter(*mRegistry, mWorld, entity);
+            WildPhysics::DestroyCharacter(*mRegistry, mPhysics, entity);
             fg::TransformUtil::DestroySubtree(*mRegistry, entity);
         }
     }

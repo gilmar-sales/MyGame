@@ -84,8 +84,9 @@ WildSpawnSystem::WildSpawnSystem(const skr::Arc<fr::Registry> &registry,
                                  const skr::Arc<fg::PrimitiveMeshFactory> &primitives,
                                  const skr::Arc<fg::AssetRegistry> &assets,
                                  const skr::Arc<fg::Scene> &scene,
-                                 const skr::Arc<fg::IPhysicsWorld> &world)
-    : fr::System(registry), mPrimitives(primitives), mAssets(assets), mScene(scene), mWorld(world)
+                                 const skr::Arc<fg::Physics> &physics)
+    : fr::System(registry), mPrimitives(primitives), mAssets(assets), mScene(scene),
+      mPhysics(physics)
 {
 }
 
@@ -132,6 +133,11 @@ void WildSpawnSystem::SpawnOne(fr::Entity areaEntity, WildSpawnArea &area, const
     ai.alertRadius = area.alertRadius;
     ai.spawnRadius = area.spawnRadius;
     ai.wanderTimer = 0.5f + Rand01();
+    {
+        const float angle = Rand01() * 6.2831853f;
+        ai.wanderDirX     = std::cos(angle);
+        ai.wanderDirZ     = std::sin(angle);
+    }
 
     // Combat root — visuals come from the Bulbasaur prefab (mesh + textures + animator).
     const fr::Entity root = mRegistry->CreateEntity(
@@ -188,7 +194,8 @@ void WildSpawnSystem::SpawnOne(fr::Entity areaEntity, WildSpawnArea &area, const
     }
 
     // Character: Dynamic Sphere matching Player RigidBody (centerOffset lifts feet).
-    WildPhysics::AttachCharacter(*mRegistry, mWorld, root);
+    // Character: Dynamic Sphere matching Player (mid-play body via Physics::EnsureBody).
+    WildPhysics::AttachCharacter(*mRegistry, mPhysics, root);
 }
 
 void WildSpawnSystem::Update(float)
