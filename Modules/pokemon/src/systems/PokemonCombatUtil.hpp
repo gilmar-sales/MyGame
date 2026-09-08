@@ -88,41 +88,20 @@ namespace PokemonCombat
             entity, [&](CharacterControllerComponent &cc) { cc.locomotionLocked = locked; });
     }
 
-    inline void BeginPhysicsCharge(fr::Registry &registry, const skr::Arc<fg::Physics> &physics,
+    inline void BeginPhysicsCharge(fr::Registry &registry, const skr::Arc<fg::Physics> &,
                                    fr::Entity entity, PokemonCombatState &combat)
     {
-        if(!physics)
-        {
-            return;
-        }
-        float maxStrength = 100.0f;
-        if(registry.HasComponent<CharacterControllerComponent>(entity))
-        {
-            registry.TryGetComponents<CharacterControllerComponent>(
-                entity, [&](CharacterControllerComponent &cc) {
-                    maxStrength         = cc.maxStrength;
-                    cc.locomotionLocked = true;
-                });
-        }
+        SetLocomotionLocked(registry, entity, true);
+        // Sentinel: still charging (used by MoveCombat / StatusEffect cleanup).
         if(combat.savedMaxStrength < 0.0f)
         {
-            combat.savedMaxStrength = maxStrength;
+            combat.savedMaxStrength = 1.0f;
         }
-        // CharacterVirtual push force during the charge — target reaction is pure physics.
-        physics->SetCharacterMaxStrength(entity, 8000.0f);
     }
 
     inline void RestorePhysicsCharge(fr::Registry &, const skr::Arc<fg::Physics> &physics,
                                      fr::Entity entity, PokemonCombatState &combat)
     {
-        if(!physics)
-        {
-            combat.savedMaxStrength = -1.0f;
-            return;
-        }
-        const float restore =
-            combat.savedMaxStrength > 0.0f ? combat.savedMaxStrength : 100.0f;
-        physics->SetCharacterMaxStrength(entity, restore);
         combat.savedMaxStrength = -1.0f;
         ZeroPlanarVelocity(physics, entity);
     }
@@ -377,8 +356,10 @@ namespace PokemonCombat
         {
             dir /= len;
         }
-        const glm::vec3 current = physics->GetCharacterVelocity(defender);
-        physics->MoveCharacter(defender, {dir.x * speed, current.y, dir.z * speed});
+
+        float mass = 70.0f;
+        // Impulse ≈ mass * desired planar Δv so AddImpulse works for Dynamic characters.
+        physics->AddImpulse(defender, {dir.x * speed * mass, 0.0f, dir.z * speed * mass});
     }
 
     /// Starts a move slot if idle, off cooldown, and has stamina. Returns true on success.

@@ -187,7 +187,7 @@ void WildSpawnSystem::SpawnOne(fr::Entity areaEntity, WildSpawnArea &area, const
         fg::TransformUtil::SetParent(*mRegistry, visual, root, false);
     }
 
-    // CharacterVirtual: ground stick, gravity, and player collision via physics step.
+    // Character: Dynamic Sphere matching Player RigidBody (centerOffset lifts feet).
     WildPhysics::AttachCharacter(*mRegistry, mWorld, root);
 }
 

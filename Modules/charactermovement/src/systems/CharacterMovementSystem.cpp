@@ -188,16 +188,14 @@ void CharacterMovementSystem::Update(float deltaTime)
             const float planarSpeed =
                 std::sqrt(desired.x * desired.x + desired.z * desired.z);
 
+            // Only touch Y on jump — leave gravity / fall velocity to the Dynamic body.
+            desired.y = mPhysics->GetCharacterVelocity(entity).y;
             if(jump && grounded)
             {
                 desired.y       = kJumpSpeed;
                 mJumpStartTimer = 0.2f;
             }
-            else if(!grounded)
-            {
-                desired.y = mPhysics->GetCharacterVelocity(entity).y;
-            }
-            else
+            else if(grounded)
             {
                 mJumpStartTimer = 0.0f;
             }

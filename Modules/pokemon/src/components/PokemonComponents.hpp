@@ -88,7 +88,7 @@ struct PokemonCombatState: fr::Component
     float        motionT     = 0.0f;
     std::int64_t hitTarget   = -1;
     bool         damageApplied = false;
-    /// Cached CharacterController maxStrength restored after physics charge.
+    /// Sentinel while a physics charge is active (cleanup / interrupt bookkeeping).
     float        savedMaxStrength = -1.0f;
     /// Player-only: countdown after KO before respawn (0 = not counting).
     float        koRespawnTimer = 0.0f;

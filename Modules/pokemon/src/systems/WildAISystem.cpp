@@ -61,14 +61,9 @@ namespace
             return;
         }
 
-        // CharacterVirtual owns gravity / ground stick; gameplay only feeds desired XZ velocity.
+        // Gameplay drives XZ only; Y stays with physics gravity unless something else sets it.
         const glm::vec3 current = physics->GetCharacterVelocity(entity);
-        const auto      ground  = physics->GetCharacterGroundInfo(entity);
-        glm::vec3       desired {planarVel.x, 0.0f, planarVel.z};
-        if(!ground.grounded)
-        {
-            desired.y = current.y;
-        }
+        glm::vec3       desired {planarVel.x, current.y, planarVel.z};
         physics->MoveCharacter(entity, desired);
         (void)dt;
         (void)registry;
