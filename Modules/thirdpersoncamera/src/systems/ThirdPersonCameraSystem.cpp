@@ -37,6 +37,11 @@ void ThirdPersonCameraSystem::Update(float)
         return;
     }
 
+    if(mInput->WasPressed("ToggleCursorLock"))
+    {
+        mInput->ToggleCursorLocked();
+    }
+
     std::unordered_map<std::string, NamedTarget> namedTargets;
     mRegistry->CreateMutation()->Each(
         [&](fr::Entity entity, fg::NameComponent &name, fg::TransformComponent &) {
