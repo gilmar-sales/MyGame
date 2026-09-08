@@ -5,6 +5,8 @@
 #include "data/PokemonCatalog.hpp"
 #include "data/WildTypes.hpp"
 
+#include "systems/WildPhysicsUtil.hpp"
+
 #include <Frigga/Asset/AssetRegistry.hpp>
 #include <Frigga/ECS/Components/AnimatorComponent.hpp>
 #include <Frigga/ECS/Components/HealthBarComponent.hpp>
@@ -81,8 +83,9 @@ namespace
 WildSpawnSystem::WildSpawnSystem(const skr::Arc<fr::Registry> &registry,
                                  const skr::Arc<fg::PrimitiveMeshFactory> &primitives,
                                  const skr::Arc<fg::AssetRegistry> &assets,
-                                 const skr::Arc<fg::Scene> &scene)
-    : fr::System(registry), mPrimitives(primitives), mAssets(assets), mScene(scene)
+                                 const skr::Arc<fg::Scene> &scene,
+                                 const skr::Arc<fg::IPhysicsWorld> &world)
+    : fr::System(registry), mPrimitives(primitives), mAssets(assets), mScene(scene), mWorld(world)
 {
 }
 
@@ -183,6 +186,9 @@ void WildSpawnSystem::SpawnOne(fr::Entity areaEntity, WildSpawnArea &area, const
         mRegistry->ExecuteTasks();
         fg::TransformUtil::SetParent(*mRegistry, visual, root, false);
     }
+
+    // CharacterVirtual: ground stick, gravity, and player collision via physics step.
+    WildPhysics::AttachCharacter(*mRegistry, mWorld, root);
 }
 
 void WildSpawnSystem::Update(float)

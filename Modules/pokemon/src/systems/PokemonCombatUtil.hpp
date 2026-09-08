@@ -74,6 +74,17 @@ namespace PokemonCombat
         const glm::vec3 v = physics->GetCharacterVelocity(entity);
         physics->MoveCharacter(entity, {0.0f, v.y, 0.0f});
         physics->SetLinearVelocity(entity, {0.0f, 0.0f, 0.0f});
+        physics->SetAngularVelocity(entity, {});
+    }
+
+    inline void SetLocomotionLocked(fr::Registry &registry, fr::Entity entity, bool locked)
+    {
+        if(!registry.HasComponent<CharacterControllerComponent>(entity))
+        {
+            return;
+        }
+        registry.TryGetComponents<CharacterControllerComponent>(
+            entity, [&](CharacterControllerComponent &cc) { cc.locomotionLocked = locked; });
     }
 
     inline void BeginPhysicsCharge(fr::Registry &registry, const skr::Arc<fg::Physics> &physics,
@@ -100,16 +111,12 @@ namespace PokemonCombat
         physics->SetCharacterMaxStrength(entity, 8000.0f);
     }
 
-    inline void EndPhysicsCharge(fr::Registry &registry, const skr::Arc<fg::Physics> &physics,
-                                 fr::Entity entity, PokemonCombatState &combat)
+    inline void RestorePhysicsCharge(fr::Registry &, const skr::Arc<fg::Physics> &physics,
+                                     fr::Entity entity, PokemonCombatState &combat)
     {
-        if(registry.HasComponent<CharacterControllerComponent>(entity))
-        {
-            registry.TryGetComponents<CharacterControllerComponent>(
-                entity, [&](CharacterControllerComponent &cc) { cc.locomotionLocked = false; });
-        }
         if(!physics)
         {
+            combat.savedMaxStrength = -1.0f;
             return;
         }
         const float restore =
@@ -119,28 +126,46 @@ namespace PokemonCombat
         ZeroPlanarVelocity(physics, entity);
     }
 
+    inline void EndPhysicsCharge(fr::Registry &registry, const skr::Arc<fg::Physics> &physics,
+                                 fr::Entity entity, PokemonCombatState &combat)
+    {
+        SetLocomotionLocked(registry, entity, false);
+        RestorePhysicsCharge(registry, physics, entity, combat);
+    }
+
     [[nodiscard]] inline fr::Entity FindAnimator(fr::Registry &registry, fr::Entity root)
     {
         if(registry.HasComponent<fg::AnimatorComponent>(root))
         {
             return root;
         }
-        fr::Entity found = fg::kInvalidEntity;
+        std::vector<fr::Entity> queue;
         if(registry.HasComponent<fg::HierarchyComponent>(root))
         {
             registry.TryGetComponents<fg::HierarchyComponent>(
                 root, [&](fg::HierarchyComponent &hierarchy) {
-                    for(const fr::Entity child : hierarchy.children)
-                    {
-                        if(registry.HasComponent<fg::AnimatorComponent>(child))
-                        {
-                            found = child;
-                            return;
-                        }
-                    }
+                    queue.insert(queue.end(), hierarchy.children.begin(),
+                                 hierarchy.children.end());
                 });
         }
-        return found;
+        for(std::size_t i = 0; i < queue.size(); ++i)
+        {
+            const fr::Entity node = queue[i];
+            if(registry.HasComponent<fg::AnimatorComponent>(node))
+            {
+                return node;
+            }
+            if(!registry.HasComponent<fg::HierarchyComponent>(node))
+            {
+                continue;
+            }
+            registry.TryGetComponents<fg::HierarchyComponent>(
+                node, [&](fg::HierarchyComponent &hierarchy) {
+                    queue.insert(queue.end(), hierarchy.children.begin(),
+                                 hierarchy.children.end());
+                });
+        }
+        return fg::kInvalidEntity;
     }
 
     [[nodiscard]] inline std::string &MoveIdAt(PokemonMoveset &moves, int slot)
@@ -204,13 +229,27 @@ namespace PokemonCombat
         if(animator != fg::kInvalidEntity)
         {
             animation->CrossFade(animator, clip, 0.08f);
+            // Loco / fight clips loop; KO explicitly disables loop in PlayKoAnim.
+            animation->SetLoop(animator, true);
         }
     }
 
     inline void PlayKoAnim(fr::Registry &registry,
                            const skr::Arc<fg::AnimationController> &animation, fr::Entity root)
     {
-        PlayMoveAnim(registry, animation, root, "001ko");
+        if(!animation)
+        {
+            return;
+        }
+        const fr::Entity animator = FindAnimator(registry, root);
+        if(animator == fg::kInvalidEntity)
+        {
+            return;
+        }
+        animation->CrossFade(animator, "001ko", 0.08f);
+        animation->SetLoop(animator, false);
+        // Stop CharacterMovement from replacing KO with idle/walk.
+        SetLocomotionLocked(registry, root, true);
     }
 
     inline void ApplyLeechSeedLink(fr::Registry &registry, fr::Entity attacker, fr::Entity defender,
@@ -319,6 +358,8 @@ namespace PokemonCombat
         combat.originY       = pose.position.y;
         combat.originZ       = pose.position.z;
         vitals.stamina -= def->stamina;
+        // Keep CharacterMovement from stomping fight clips / fighting move motion.
+        SetLocomotionLocked(registry, entity, true);
 
         if(def->chargeSec > 0.0f)
         {

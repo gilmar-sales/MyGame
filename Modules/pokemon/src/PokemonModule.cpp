@@ -8,6 +8,7 @@
 #include "systems/ProjectileSystem.hpp"
 #include "systems/ItemUseSystem.hpp"
 #include "systems/PokemonHudSystem.hpp"
+#include "systems/PlayerRespawnSystem.hpp"
 
 #include "components/PokemonComponents.hpp"
 #include "data/WildTypes.hpp"
@@ -197,5 +198,6 @@ FRI_MODULE(module)
           .System<MoveCombatSystem>()
           .System<ProjectileSystem>()
           .System<ItemUseSystem>()
-          .System<PokemonHudSystem>();
+          .System<PokemonHudSystem>()
+          .System<PlayerRespawnSystem>();
 }

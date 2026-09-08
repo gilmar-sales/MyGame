@@ -12,7 +12,9 @@
 #include <glm/gtc/quaternion.hpp>
 
 #include <cmath>
+#include <string>
 #include <string_view>
+#include <vector>
 
 namespace
 {
@@ -43,22 +45,33 @@ fr::Entity CharacterMovementSystem::FindAnimator(fr::Entity player) const
         return player;
     }
 
-    fr::Entity found = fg::kInvalidEntity;
+    // Prefab instances may nest the Animator one or more levels down.
+    std::vector<fr::Entity> queue;
     if(mRegistry->HasComponent<fg::HierarchyComponent>(player))
     {
         mRegistry->TryGetComponents<fg::HierarchyComponent>(
             player, [&](fg::HierarchyComponent &hierarchy) {
-                for(const fr::Entity child : hierarchy.children)
-                {
-                    if(mRegistry->HasComponent<fg::AnimatorComponent>(child))
-                    {
-                        found = child;
-                        return;
-                    }
-                }
+                queue.insert(queue.end(), hierarchy.children.begin(), hierarchy.children.end());
             });
     }
-    return found;
+
+    for(std::size_t i = 0; i < queue.size(); ++i)
+    {
+        const fr::Entity node = queue[i];
+        if(mRegistry->HasComponent<fg::AnimatorComponent>(node))
+        {
+            return node;
+        }
+        if(!mRegistry->HasComponent<fg::HierarchyComponent>(node))
+        {
+            continue;
+        }
+        mRegistry->TryGetComponents<fg::HierarchyComponent>(
+            node, [&](fg::HierarchyComponent &hierarchy) {
+                queue.insert(queue.end(), hierarchy.children.begin(), hierarchy.children.end());
+            });
+    }
+    return fg::kInvalidEntity;
 }
 
 void CharacterMovementSystem::PlayLocomotion(fr::Entity animator, std::string_view clip,
@@ -69,7 +82,18 @@ void CharacterMovementSystem::PlayLocomotion(fr::Entity animator, std::string_vi
         return;
     }
 
-    if(mCurrentClip == clip)
+    // Combat (and other systems) can change the clip without updating mCurrentClip.
+    // Re-drive when the Animator no longer matches the requested loco clip.
+    bool animatorMatches = false;
+    if(mRegistry->HasComponent<fg::AnimatorComponent>(animator))
+    {
+        mRegistry->TryGetComponents<fg::AnimatorComponent>(
+            animator, [&](fg::AnimatorComponent &anim) {
+                animatorMatches = anim.clipName == clip ||
+                                  anim.clipName.find(clip) != std::string::npos;
+            });
+    }
+    if(mCurrentClip == clip && animatorMatches)
     {
         return;
     }
@@ -119,6 +143,14 @@ void CharacterMovementSystem::Update(float deltaTime)
 
             if(controller.locomotionLocked)
             {
+                // Force a loco CrossFade after combat releases the Animator.
+                mCurrentClip.clear();
+                if(mPhysics)
+                {
+                    const glm::vec3 v = mPhysics->GetCharacterVelocity(entity);
+                    mPhysics->MoveCharacter(entity, {0.0f, v.y, 0.0f});
+                    mPhysics->SetLinearVelocity(entity, {0.0f, 0.0f, 0.0f});
+                }
                 return;
             }
 

@@ -12,6 +12,7 @@ frigga_add_module(pokemon
   src/systems/ProjectileSystem.cpp
   src/systems/ItemUseSystem.cpp
   src/systems/PokemonHudSystem.cpp
+  src/systems/PlayerRespawnSystem.cpp
 )
 target_include_directories(pokemon PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/../charactermovement/src/components"

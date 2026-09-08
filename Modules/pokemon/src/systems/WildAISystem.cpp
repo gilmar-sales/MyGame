@@ -4,6 +4,7 @@
 #include "data/PokemonCatalog.hpp"
 #include "data/WildTypes.hpp"
 #include "systems/PokemonCombatUtil.hpp"
+#include "systems/WildPhysicsUtil.hpp"
 
 #include <Frigga/ECS/Components/NameComponent.hpp>
 #include <Frigga/ECS/Components/TransformComponent.hpp>
@@ -34,26 +35,43 @@ namespace
         return dist(rng);
     }
 
-    void FaceFlat(fr::Registry &registry, fr::Entity entity, const glm::vec3 &dirFlat)
+    void FaceFlat(fr::Registry &registry, const skr::Arc<fg::Physics> &physics, fr::Entity entity,
+                  const glm::vec3 &dirFlat)
     {
         if(glm::dot(dirFlat, dirFlat) < 1e-6f)
         {
             return;
         }
-        const glm::vec3 n = glm::normalize(glm::vec3 {dirFlat.x, 0.0f, dirFlat.z});
+        const glm::vec3 n   = glm::normalize(glm::vec3 {dirFlat.x, 0.0f, dirFlat.z});
         const glm::quat rot = glm::quatLookAt(-n, glm::vec3 {0.0f, 1.0f, 0.0f});
         const auto      pose = fg::TransformUtil::WorldPose(registry, entity);
         fg::TransformUtil::SetWorldPose(registry, entity, pose.position, rot);
+        if(physics)
+        {
+            physics->SetCharacterFacing(entity, rot);
+        }
     }
 
     void MoveFlat(fr::Registry &registry, const skr::Arc<fg::Physics> &physics, fr::Entity entity,
-                  const glm::vec3 &delta)
+                  const glm::vec3 &planarVel, float dt)
     {
-        const auto pose = fg::TransformUtil::WorldPose(registry, entity);
-        glm::vec3  pos  = pose.position + delta;
-        pos.y           = pose.position.y;
-        PokemonCombat::SetEntityWorldPos(registry, physics, entity, pos);
-        FaceFlat(registry, entity, delta);
+        FaceFlat(registry, physics, entity, planarVel);
+        if(!physics)
+        {
+            return;
+        }
+
+        // CharacterVirtual owns gravity / ground stick; gameplay only feeds desired XZ velocity.
+        const glm::vec3 current = physics->GetCharacterVelocity(entity);
+        const auto      ground  = physics->GetCharacterGroundInfo(entity);
+        glm::vec3       desired {planarVel.x, 0.0f, planarVel.z};
+        if(!ground.grounded)
+        {
+            desired.y = current.y;
+        }
+        physics->MoveCharacter(entity, desired);
+        (void)dt;
+        (void)registry;
     }
 
     void PlayLoco(fr::Registry &registry, const skr::Arc<fg::AnimationController> &animation,
@@ -109,8 +127,9 @@ namespace
 
 WildAISystem::WildAISystem(const skr::Arc<fr::Registry> &registry,
                            const skr::Arc<fg::Physics> &physics,
-                           const skr::Arc<fg::AnimationController> &animation)
-    : fr::System(registry), mPhysics(physics), mAnimation(animation)
+                           const skr::Arc<fg::AnimationController> &animation,
+                           const skr::Arc<fg::IPhysicsWorld> &world)
+    : fr::System(registry), mPhysics(physics), mAnimation(animation), mWorld(world)
 {
 }
 
@@ -256,8 +275,8 @@ void WildAISystem::Update(float deltaTime)
                 {
                     toEscape = glm::normalize(toEscape);
                     PlayLoco(*mRegistry, mAnimation, entity, ai, kClipRun);
-                    MoveFlat(*mRegistry, mPhysics, entity,
-                             toEscape * (ai.moveSpeed * 1.85f) * deltaTime);
+                    MoveFlat(*mRegistry, mPhysics, entity, toEscape * (ai.moveSpeed * 1.85f),
+                             deltaTime);
                 }
                 else
                 {
@@ -302,7 +321,7 @@ void WildAISystem::Update(float deltaTime)
                 if(dist > 1e-4f)
                 {
                     toT = glm::normalize(toT);
-                    FaceFlat(*mRegistry, entity, toT);
+                    FaceFlat(*mRegistry, mPhysics, entity, toT);
                 }
 
                 const float combatRunSpeed = ai.moveSpeed * 1.75f;
@@ -314,12 +333,12 @@ void WildAISystem::Update(float deltaTime)
                        def->chargeSec <= 0.0f)
                     {
                         PlayLoco(*mRegistry, mAnimation, entity, ai, kClipRun);
-                        MoveFlat(*mRegistry, mPhysics, entity,
-                                 toT * combatRunSpeed * deltaTime);
+                        MoveFlat(*mRegistry, mPhysics, entity, toT * combatRunSpeed, deltaTime);
                     }
                     else
                     {
                         PlayLoco(*mRegistry, mAnimation, entity, ai, kClipIdle);
+                        PokemonCombat::ZeroPlanarVelocity(mPhysics, entity);
                         PokemonCombat::TryStartMove(*mRegistry, entity, vitals, moves, combat,
                                                     slot, toT);
                     }
@@ -327,11 +346,12 @@ void WildAISystem::Update(float deltaTime)
                 else if(dist > 1.2f)
                 {
                     PlayLoco(*mRegistry, mAnimation, entity, ai, kClipRun);
-                    MoveFlat(*mRegistry, mPhysics, entity, toT * combatRunSpeed * deltaTime);
+                    MoveFlat(*mRegistry, mPhysics, entity, toT * combatRunSpeed, deltaTime);
                 }
                 else
                 {
                     PlayLoco(*mRegistry, mAnimation, entity, ai, kClipIdle);
+                    PokemonCombat::ZeroPlanarVelocity(mPhysics, entity);
                 }
                 return;
             }
@@ -345,8 +365,9 @@ void WildAISystem::Update(float deltaTime)
                 ai.wanderTimer    = RandRange(1.2f, 3.5f);
             }
 
-            glm::vec3 next =
-                pos + glm::vec3 {ai.wanderDirX, 0.0f, ai.wanderDirZ} * ai.moveSpeed * deltaTime;
+            const glm::vec3 wanderVel {ai.wanderDirX * ai.moveSpeed, 0.0f,
+                                       ai.wanderDirZ * ai.moveSpeed};
+            glm::vec3       next = pos + wanderVel * deltaTime;
             const glm::vec3 home {ai.homeX, 0.0f, ai.homeZ};
             glm::vec3       fromHome {next.x - home.x, 0.0f, next.z - home.z};
             const float     homeDist = glm::length(fromHome);
@@ -355,18 +376,17 @@ void WildAISystem::Update(float deltaTime)
                 fromHome      = glm::normalize(fromHome);
                 ai.wanderDirX = -fromHome.x;
                 ai.wanderDirZ = -fromHome.z;
-                next = pos + glm::vec3 {ai.wanderDirX, 0.0f, ai.wanderDirZ} * ai.moveSpeed *
-                                 deltaTime;
             }
-            const glm::vec3 delta = next - pos;
-            if(glm::length(glm::vec3 {delta.x, 0.0f, delta.z}) > 1e-4f)
+            const glm::vec3 vel {ai.wanderDirX * ai.moveSpeed, 0.0f, ai.wanderDirZ * ai.moveSpeed};
+            if(glm::length(glm::vec3 {vel.x, 0.0f, vel.z}) > 1e-4f)
             {
                 PlayLoco(*mRegistry, mAnimation, entity, ai, kClipWalk);
-                MoveFlat(*mRegistry, mPhysics, entity, delta);
+                MoveFlat(*mRegistry, mPhysics, entity, vel, deltaTime);
             }
             else
             {
                 PlayLoco(*mRegistry, mAnimation, entity, ai, kClipIdle);
+                PokemonCombat::ZeroPlanarVelocity(mPhysics, entity);
             }
         });
 
@@ -374,6 +394,7 @@ void WildAISystem::Update(float deltaTime)
     {
         if(mRegistry->HasComponent<WildPokemonAI>(entity))
         {
+            WildPhysics::DestroyCharacter(*mRegistry, mWorld, entity);
             fg::TransformUtil::DestroySubtree(*mRegistry, entity);
         }
     }

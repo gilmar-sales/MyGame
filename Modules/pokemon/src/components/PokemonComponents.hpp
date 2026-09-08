@@ -90,6 +90,8 @@ struct PokemonCombatState: fr::Component
     bool         damageApplied = false;
     /// Cached CharacterController maxStrength restored after physics charge.
     float        savedMaxStrength = -1.0f;
+    /// Player-only: countdown after KO before respawn (0 = not counting).
+    float        koRespawnTimer = 0.0f;
 };
 
 struct PokemonStatus: fr::Component

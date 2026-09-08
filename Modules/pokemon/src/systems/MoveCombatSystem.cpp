@@ -47,6 +47,13 @@ void MoveCombatSystem::Update(float deltaTime)
             PokemonCombatState &combat) {
             if(vitals.knockedOut)
             {
+                // Keep movement locked for the whole KO / respawn window.
+                if(combat.savedMaxStrength >= 0.0f)
+                {
+                    PokemonCombat::RestorePhysicsCharge(*mRegistry, mPhysics, entity, combat);
+                }
+                PokemonCombat::SetLocomotionLocked(*mRegistry, entity, true);
+                PokemonCombat::ZeroPlanarVelocity(mPhysics, entity);
                 combat.phase         = PokemonCombat::kPhaseIdle;
                 combat.pendingSlot   = -1;
                 combat.hitTarget     = -1;
@@ -78,9 +85,13 @@ void MoveCombatSystem::Update(float deltaTime)
             const glm::vec3 origin {combat.originX, combat.originY, combat.originZ};
 
             auto finishAndCooldown = [&]() {
-                if(def->chargeSpeed > 0.0f)
+                if(def->chargeSpeed > 0.0f || combat.savedMaxStrength >= 0.0f)
                 {
                     PokemonCombat::EndPhysicsCharge(*mRegistry, mPhysics, entity, combat);
+                }
+                else
+                {
+                    PokemonCombat::SetLocomotionLocked(*mRegistry, entity, false);
                 }
                 if(combat.pendingSlot >= 0 && combat.pendingSlot < 4)
                 {

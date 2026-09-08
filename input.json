@@ -50,6 +50,11 @@
     "keys": ["F"],
     "mouseButtons": [],
     "gamepadButtons": []
+    },
+    "ToggleCursorLock": {
+    "keys": ["M"],
+    "mouseButtons": [],
+    "gamepadButtons": []
     }
   },
   "axes": {
