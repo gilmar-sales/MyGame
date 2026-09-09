@@ -2,7 +2,7 @@
 
 #include "components/ThirdPersonCameraComponent.hpp"
 
-#include <Frigga/ECS/Components/NameComponent.hpp>
+#include <Frigga/ECS/Components/HierarchyComponent.hpp>
 #include <Frigga/ECS/Components/TransformComponent.hpp>
 #include <Frigga/ECS/TransformUtil.hpp>
 #include <Frigga/Physics/PhysicsTypes.hpp>
@@ -11,17 +11,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <string>
-#include <unordered_map>
-
-namespace
-{
-    struct NamedTarget
-    {
-        fr::Entity entity = fg::kInvalidEntity;
-        glm::vec3  position {0.0f};
-    };
-} // namespace
 
 ThirdPersonCameraSystem::ThirdPersonCameraSystem(const skr::Arc<fr::Registry> &registry,
                                                  const skr::Arc<fg::Input> &input,
@@ -42,17 +31,8 @@ void ThirdPersonCameraSystem::Update(float)
         mInput->ToggleCursorLocked();
     }
 
-    std::unordered_map<std::string, NamedTarget> namedTargets;
     mRegistry->CreateMutation()->Each(
-        [&](fr::Entity entity, fg::NameComponent &name, fg::TransformComponent &) {
-            namedTargets[name.name] = NamedTarget {
-                .entity   = entity,
-                .position = fg::TransformUtil::WorldPose(*mRegistry, entity).position,
-            };
-        });
-
-    mRegistry->CreateMutation()->Each(
-        [&](fr::Entity entity, fg::TransformComponent &, ThirdPersonCameraComponent &orbit) {
+        [this](fr::Entity entity, fg::TransformComponent &, ThirdPersonCameraComponent &orbit) {
             orbit.yaw -= mInput->GetAxis(orbit.lookXAxis);
             orbit.pitch += mInput->GetAxis(orbit.lookYAxis);
             orbit.pitch = std::clamp(orbit.pitch, orbit.minPitch, orbit.maxPitch);
@@ -60,13 +40,13 @@ void ThirdPersonCameraSystem::Update(float)
             orbit.distance -= mInput->GetAxis(orbit.zoomAxis);
             orbit.distance = std::clamp(orbit.distance, orbit.minDistance, orbit.maxDistance);
 
-            glm::vec3  targetPos   = fg::TransformUtil::WorldPose(*mRegistry, entity).position;
+            glm::vec3  targetPos    = fg::TransformUtil::WorldPose(*mRegistry, entity).position;
             fr::Entity targetEntity = fg::kInvalidEntity;
-            if(const auto found = namedTargets.find(orbit.targetName);
-               found != namedTargets.end())
+            if(orbit.target.id != fg::kInvalidEntity &&
+               mRegistry->HasComponent<fg::TransformComponent>(orbit.target.id))
             {
-                targetPos    = found->second.position;
-                targetEntity = found->second.entity;
+                targetEntity = orbit.target.id;
+                targetPos = fg::TransformUtil::WorldPose(*mRegistry, targetEntity).position;
             }
 
             const glm::vec3 pivot = targetPos + orbit.pivotOffset;
@@ -91,7 +71,6 @@ void ThirdPersonCameraSystem::Update(float)
                     mPhysics->SphereCast(pivot, offsetDir, probeRadius, cameraDistance, filter);
                 if(hit.hit)
                 {
-                    // Leave a small skin so the near plane does not bite into the surface.
                     constexpr float kSkin = 0.05f;
                     cameraDistance =
                         std::clamp(hit.distance - kSkin, 0.05f, orbit.distance);

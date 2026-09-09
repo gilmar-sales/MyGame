@@ -5,7 +5,7 @@
 
 static void DrawThirdPersonCamera(ThirdPersonCameraComponent &c, fg::FriComponentInspector &ui)
 {
-    ui.InputText("Target", c.targetName);
+    ui.EntityField("Target", c.target);
     ui.DragFloat3("Pivot Offset", c.pivotOffset, 0.01f);
     ui.DragFloat("Distance", c.distance, 0.05f, c.minDistance, c.maxDistance);
     ui.DragFloat("Min Distance", c.minDistance, 0.05f, 0.1f, 50.0f);
@@ -14,20 +14,12 @@ static void DrawThirdPersonCamera(ThirdPersonCameraComponent &c, fg::FriComponen
     ui.DragFloat("Pitch", c.pitch, 0.5f, c.minPitch, c.maxPitch);
     ui.DragFloat("Min Pitch", c.minPitch, 0.5f, -89.0f, 89.0f);
     ui.DragFloat("Max Pitch", c.maxPitch, 0.5f, -89.0f, 89.0f);
-    int collide = c.collideWithWorld ? 1 : 0;
-    if(ui.SliderInt("Collide With World", collide, 0, 1))
-    {
-        c.collideWithWorld = collide != 0;
-    }
-    ui.DragFloat("Collision Radius", c.collisionRadius, 0.01f, 0.05f, 1.0f);
-    if(ui.IsItemHovered())
-    {
-        ui.SetTooltip("SphereCast probe radius used to keep the camera out of geometry.");
-    }
+    ui.DragFloat("Collision Radius", c.collisionRadius, 0.01f, 0.05f, 2.0f);
+    ui.Checkbox("Collide With World", c.collideWithWorld);
     ui.InputText("Look X Axis", c.lookXAxis);
     ui.InputText("Look Y Axis", c.lookYAxis);
     ui.InputText("Zoom Axis", c.zoomAxis);
-    ui.TextDisabled("Uses Input Map LookX / LookY / Zoom");
+    ui.TextDisabled("Drag a Hierarchy entity onto Target");
 }
 
 FRI_MODULE(module)
