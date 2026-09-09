@@ -21,17 +21,12 @@ ThirdPersonCameraSystem::ThirdPersonCameraSystem(const skr::Arc<fr::Registry> &r
 
 void ThirdPersonCameraSystem::Update(float)
 {
-    if(!mInput)
-    {
-        return;
-    }
-
     if(mInput->WasPressed("ToggleCursorLock"))
     {
         mInput->ToggleCursorLocked();
     }
 
-    mRegistry->CreateMutation()->Each(
+    mRegistry->CreateMutation()->EachAsync(
         [this](fr::Entity entity, fg::TransformComponent &, ThirdPersonCameraComponent &orbit) {
             orbit.yaw -= mInput->GetAxis(orbit.lookXAxis);
             orbit.pitch += mInput->GetAxis(orbit.lookYAxis);

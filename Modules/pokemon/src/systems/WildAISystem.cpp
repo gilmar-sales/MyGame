@@ -6,7 +6,7 @@
 #include "systems/PokemonCombatUtil.hpp"
 #include "systems/WildPhysicsUtil.hpp"
 
-#include <Frigga/ECS/Components/NameComponent.hpp>
+#include <Frigga/ECS/Components/HierarchyComponent.hpp>
 #include <Frigga/ECS/Components/TransformComponent.hpp>
 #include <Frigga/ECS/TransformUtil.hpp>
 
@@ -17,8 +17,6 @@
 #include <cmath>
 #include <random>
 #include <string>
-#include <unordered_map>
-#include <utility>
 #include <vector>
 
 namespace
@@ -130,32 +128,28 @@ void WildAISystem::Update(float deltaTime)
         return;
     }
 
-    fr::Entity player = fg::kInvalidEntity;
-    glm::vec3  playerPos {};
-    bool       playerAlive = false;
-    mRegistry->CreateMutation()->Each(
-        [&](fr::Entity entity, fg::NameComponent &name, PokemonVitals &vitals,
-            fg::TransformComponent &) {
-            if(name.name != "Player")
-            {
-                return;
-            }
-            player      = entity;
-            playerPos  = fg::TransformUtil::WorldPose(*mRegistry, entity).position;
-            playerAlive = !vitals.knockedOut;
-        });
+    if(mPlayer == fg::kInvalidEntity || !mRegistry->HasComponent<PlayerTag>(mPlayer))
+    {
+        const auto player = mRegistry->CreateQuery()->First<PlayerTag>();
+        mPlayer = player.has_value() ? player.value() : fg::kInvalidEntity;
+    }
 
-    std::unordered_map<std::string, std::pair<fr::Entity, float>> escapes;
-    mRegistry->CreateMutation()->Each(
-        [&](fr::Entity entity, fg::NameComponent &name, WildEscapeArea &area) {
-            escapes[name.name] = {entity, area.radius};
-        });
+    glm::vec3 playerPos {};
+    bool      playerAlive = false;
+    if(mPlayer != fg::kInvalidEntity &&
+       mRegistry->HasComponent<PokemonVitals>(mPlayer) &&
+       mRegistry->HasComponent<fg::TransformComponent>(mPlayer))
+    {
+        playerPos = fg::TransformUtil::WorldPose(*mRegistry, mPlayer).position;
+        mRegistry->TryGetComponents<PokemonVitals>(
+            mPlayer, [&](PokemonVitals &vitals) { playerAlive = !vitals.knockedOut; });
+    }
+    else
+    {
+        mPlayer = fg::kInvalidEntity;
+    }
 
-    std::unordered_map<std::int64_t, std::string> spawnEscapeNames;
-    mRegistry->CreateMutation()->Each(
-        [&](fr::Entity entity, WildSpawnArea &area) {
-            spawnEscapeNames[static_cast<std::int64_t>(entity)] = area.escapeAreaName;
-        });
+    const bool hasPlayer = playerAlive && mPlayer != fg::kInvalidEntity;
 
     std::vector<fr::Entity> destroyList;
 
@@ -165,7 +159,6 @@ void WildAISystem::Update(float deltaTime)
             const auto pose = fg::TransformUtil::WorldPose(*mRegistry, entity);
             const glm::vec3 pos = pose.position;
 
-            // --- Fainted: stay on ground, then despawn for respawn ---
             if(ai.state == WildAIState::kFainted || vitals.knockedOut)
             {
                 if(ai.state != WildAIState::kFainted)
@@ -211,7 +204,6 @@ void WildAISystem::Update(float deltaTime)
                 return;
             }
 
-            const bool hasPlayer = playerAlive && player != fg::kInvalidEntity;
             const glm::vec3 toPlayer =
                 hasPlayer ? glm::vec3 {playerPos.x - pos.x, 0.0f, playerPos.z - pos.z}
                           : glm::vec3 {};
@@ -238,12 +230,12 @@ void WildAISystem::Update(float deltaTime)
                 if(ai.personality == WildPersonality::kAggressive)
                 {
                     ai.state  = WildAIState::kCombat;
-                    ai.target = static_cast<std::int64_t>(player);
+                    ai.target = static_cast<std::int64_t>(mPlayer);
                 }
                 else if(ai.personality == WildPersonality::kSkittish)
                 {
                     ai.state  = WildAIState::kFleeing;
-                    ai.target = static_cast<std::int64_t>(player);
+                    ai.target = static_cast<std::int64_t>(mPlayer);
                 }
             }
 
@@ -251,15 +243,26 @@ void WildAISystem::Update(float deltaTime)
             {
                 glm::vec3 escapePos = {ai.homeX, pos.y, ai.homeZ};
                 float     escapeR   = 2.0f;
-                const auto nameIt = spawnEscapeNames.find(ai.spawnArea);
-                const std::string escName =
-                    nameIt != spawnEscapeNames.end() ? nameIt->second : "WildEscape";
-                const auto escIt = escapes.find(escName);
-                if(escIt != escapes.end())
+                if(ai.spawnArea >= 0)
                 {
-                    escapePos =
-                        fg::TransformUtil::WorldPose(*mRegistry, escIt->second.first).position;
-                    escapeR = escIt->second.second;
+                    const auto spawn = static_cast<fr::Entity>(ai.spawnArea);
+                    if(mRegistry->HasComponent<WildSpawnArea>(spawn))
+                    {
+                        mRegistry->TryGetComponents<WildSpawnArea>(
+                            spawn, [&](WildSpawnArea &area) {
+                                const fr::Entity escape = area.escapeArea.id;
+                                if(escape == fg::kInvalidEntity ||
+                                   !mRegistry->HasComponent<WildEscapeArea>(escape) ||
+                                   !mRegistry->HasComponent<fg::TransformComponent>(escape))
+                                {
+                                    return;
+                                }
+                                escapePos =
+                                    fg::TransformUtil::WorldPose(*mRegistry, escape).position;
+                                mRegistry->TryGetComponents<WildEscapeArea>(
+                                    escape, [&](WildEscapeArea &esc) { escapeR = esc.radius; });
+                            });
+                    }
                 }
                 glm::vec3 toEscape {escapePos.x - pos.x, 0.0f, escapePos.z - pos.z};
                 const float distEsc = glm::length(toEscape);
@@ -289,8 +292,8 @@ void WildAISystem::Update(float deltaTime)
                 {
                     if(hasPlayer)
                     {
-                        target    = player;
-                        ai.target = static_cast<std::int64_t>(player);
+                        target    = mPlayer;
+                        ai.target = static_cast<std::int64_t>(mPlayer);
                     }
                     else
                     {

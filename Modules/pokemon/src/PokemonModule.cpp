@@ -154,12 +154,17 @@ namespace
         {
             c.levelMax = hi;
         }
-        ui.InputText("Escape Area Name", c.escapeAreaName);
+        ui.EntityField("Escape Area", c.escapeArea);
     }
 
     void DrawWildEscape(WildEscapeArea &c, fg::FriComponentInspector &ui)
     {
         ui.DragFloat("Radius", c.radius, 0.1f, 0.5f, 50.0f);
+    }
+
+    void DrawPlayerTag(PlayerTag &, fg::FriComponentInspector &ui)
+    {
+        ui.TextDisabled("Marks the unique player entity");
     }
 
     void DrawTeam(PokemonTeam &c, fg::FriComponentInspector &ui)
@@ -186,6 +191,7 @@ FRI_MODULE(module)
           .Component<PokemonStatus>("PokemonStatus", "Pokemon Status")
           .Component<PokemonProjectile>("PokemonProjectile", "Pokemon Projectile")
           .Component<PokemonTeam>("PokemonTeam", "Pokemon Team", DrawTeam)
+          .Component<PlayerTag>("PlayerTag", "Player Tag", DrawPlayerTag)
           .Component<WildPokemonAI>("WildPokemonAI", "Wild Pokemon AI")
           .Component<WildSpawnArea>("WildSpawnArea", "Wild Spawn Area", DrawWildSpawn)
           .Component<WildEscapeArea>("WildEscapeArea", "Wild Escape Area", DrawWildEscape)

@@ -2,6 +2,7 @@
 
 #include <Frigga/Macro.hpp>
 #include <Frigga/Animation/AnimationController.hpp>
+#include <Frigga/ECS/Components/HierarchyComponent.hpp>
 #include <Frigga/Physics/Physics.hpp>
 
 #include <Freyr/Freyr.hpp>
@@ -18,4 +19,5 @@ class WildAISystem: public fr::System
   private:
     skr::Arc<fg::Physics>             mPhysics;
     skr::Arc<fg::AnimationController> mAnimation;
+    fr::Entity                        mPlayer = fg::kInvalidEntity;
 };

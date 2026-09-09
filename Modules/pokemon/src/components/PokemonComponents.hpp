@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Frigga/ECS/Components/EntityRef.hpp>
 #include <Freyr/Freyr.hpp>
 
 #include <cstdint>
@@ -134,6 +135,11 @@ struct PokemonTeam: fr::Component
     std::int64_t team = 0;
 };
 
+/// Marks the unique controllable player entity (WildAI and future systems).
+struct PlayerTag: fr::Component
+{
+};
+
 /// Personality: 0 aggressive, 1 peaceful, 2 skittish, 3 cowardly
 /// AI state: 0 passive, 1 combat, 2 fleeing, 3 fainted
 struct WildPokemonAI: fr::Component
@@ -167,7 +173,7 @@ struct WildSpawnArea: fr::Component
     float        alertRadius       = 5.0f;
     std::int64_t levelMin          = 8;
     std::int64_t levelMax          = 12;
-    std::string  escapeAreaName    = "WildEscape";
+    fg::EntityRef escapeArea {};
     /// Runtime bookkeeping so deferred CreateEntity cannot overshoot maxCount.
     std::int64_t pendingSpawns     = 0;
     std::int64_t lastLiveCount     = 0;
