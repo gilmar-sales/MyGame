@@ -7,7 +7,7 @@
     "gamepadButtons": ["South"]
     },
     "Move4": {
-    "keys": ["V"],
+    "keys": ["Num4"],
     "mouseButtons": [],
     "gamepadButtons": []
     },
@@ -22,7 +22,7 @@
     "gamepadButtons": ["RightShoulder"]
     },
     "Move1": {
-    "keys": ["Z"],
+    "keys": ["Num1"],
     "mouseButtons": [],
     "gamepadButtons": ["West"]
     },
@@ -32,12 +32,12 @@
     "gamepadButtons": []
     },
     "Move2": {
-    "keys": ["X"],
+    "keys": ["Num2"],
     "mouseButtons": [],
     "gamepadButtons": ["North"]
     },
     "Move3": {
-    "keys": ["C"],
+    "keys": ["Num3"],
     "mouseButtons": [],
     "gamepadButtons": ["East"]
     },

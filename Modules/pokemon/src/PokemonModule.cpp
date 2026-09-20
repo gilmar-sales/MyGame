@@ -204,6 +204,6 @@ FRI_MODULE(module)
           .System<MoveCombatSystem>()
           .System<ProjectileSystem>()
           .System<ItemUseSystem>()
-          .System<PokemonHudSystem>()
+          .System<PokemonHudSystem>("Render")
           .System<PlayerRespawnSystem>();
 }

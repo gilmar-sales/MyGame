@@ -8,6 +8,8 @@
 struct MoveDef
 {
     std::string_view id;
+    std::string_view name;
+    std::string_view description;
     ElementType      element   = ElementType::Normal;
     MoveCategory     category  = MoveCategory::Physical;
     MoveDelivery     delivery  = MoveDelivery::Melee;
