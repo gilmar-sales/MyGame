@@ -10,6 +10,7 @@
 #include <Frigga/Asset/AssetRegistry.hpp>
 #include <Frigga/ECS/Components/AnimatorComponent.hpp>
 #include <Frigga/ECS/Components/HealthBarComponent.hpp>
+#include <Frigga/ECS/Components/BillboardTextComponent.hpp>
 #include <Frigga/ECS/Components/MaterialComponent.hpp>
 #include <Frigga/ECS/Components/MeshComponent.hpp>
 #include <Frigga/ECS/Components/NameComponent.hpp>
@@ -173,7 +174,9 @@ bool WildSpawnSystem::SpawnOne(fr::Entity areaEntity, WildSpawnArea &area, const
     const fr::Entity root = mRegistry->CreateEntity(
         fg::NameComponent {.name = "WildBulbasaur"},
         fg::TransformComponent {.position = pos},
-        fg::HealthBarComponent {.fill = 1.0f, .offset = {0.0f, 1.4f, 0.0f}}, identity,
+        fg::HealthBarComponent {.fill = 1.0f, .offset = {0.0f, 1.1f, 0.0f}},
+        fg::BillboardTextComponent {.text = "Bulbasaur", .borderWidth = 1.1f, .offset = {0.0f, 1.25f, 0.0f}},
+         identity,
         PokemonIVs {}, PokemonStats {.dirty = true}, types, PokemonVitals {}, PokemonMoveset {},
         PokemonCombatState {}, PokemonStatus {}, PokemonTeam {.team = PokemonTeamId::kWild}, ai);
     // One flush for the combat root before parenting the visual under it.
