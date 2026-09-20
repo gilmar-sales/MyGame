@@ -6,7 +6,7 @@
 #include "systems/PokemonCombatUtil.hpp"
 #include "systems/WildPhysicsUtil.hpp"
 
-#include <Frigga/ECS/Components/HierarchyComponent.hpp>
+#include <Frigga/ECS/Components/AnimatorComponent.hpp>
 #include <Frigga/ECS/Components/RigidBodyComponent.hpp>
 #include <Frigga/ECS/Components/TransformComponent.hpp>
 #include <Frigga/ECS/TransformUtil.hpp>
@@ -18,7 +18,6 @@
 #include <cmath>
 #include <random>
 #include <string>
-#include <vector>
 
 namespace
 {
@@ -28,52 +27,57 @@ namespace
 
     thread_local std::mt19937 rng {std::random_device {}()};
 
-    [[nodiscard]] float RandRange(float a, float b)
+    [[nodiscard]] float RandomAngle()
     {
-        std::uniform_real_distribution<float> dist(a, b);
+        thread_local std::uniform_real_distribution<float> dist(0.0f, 6.2831853f);
+        return dist(rng);
+    }
+    [[nodiscard]] float RandomTimer()
+    {
+        thread_local std::uniform_real_distribution<float> dist(1.2f, 3.5f);
         return dist(rng);
     }
 
-    [[nodiscard]] bool IsPhysicsAttached(fr::Registry &registry, fr::Entity entity)
-    {
-        if(!registry.HasComponent<fg::RigidBodyComponent>(entity))
-        {
-            return false;
-        }
-        bool valid = false;
-        registry.TryGetComponents<fg::RigidBodyComponent>(
-            entity, [&](fg::RigidBodyComponent &rb) { valid = rb.body.IsValid(); });
-        return valid;
-    }
+    /// Skip physics facing writes when planar direction is unchanged (~cos 5°).
+    constexpr float kFaceDotEps = 0.995f;
 
-    void FaceFlat(fr::Registry &, const skr::Arc<fg::Physics> &physics, fr::Entity entity,
+    void FaceFlat(const skr::Arc<fg::Physics> &physics, fr::Entity entity, WildPokemonAI &ai,
                   const glm::vec3 &dirFlat)
     {
-        if(glm::dot(dirFlat, dirFlat) < 1e-6f || !physics)
+        if(!physics || glm::dot(dirFlat, dirFlat) < 1e-6f)
         {
             return;
         }
-        const glm::vec3 n   = glm::normalize(glm::vec3 {dirFlat.x, 0.0f, dirFlat.z});
+        const glm::vec3 n = glm::normalize(glm::vec3 {dirFlat.x, 0.0f, dirFlat.z});
+        const float     facingLen2 = ai.faceDirX * ai.faceDirX + ai.faceDirZ * ai.faceDirZ;
+        if(facingLen2 > 0.5f &&
+           (ai.faceDirX * n.x + ai.faceDirZ * n.z) > kFaceDotEps)
+        {
+            return;
+        }
+
+        FREYR_TRACE("APP", "WildAI.FaceFlat");
+        ai.faceDirX           = n.x;
+        ai.faceDirZ           = n.z;
         const glm::quat rot = glm::quatLookAt(-n, glm::vec3 {0.0f, 1.0f, 0.0f});
         physics->SetCharacterFacing(entity, rot);
     }
 
     /// Parallel-safe locomotion: never AttachCharacter / ExecuteTasks (spawn owns that).
-    void MoveFlat(fr::Registry &registry, const skr::Arc<fg::Physics> &physics, fr::Entity entity,
-                  const glm::vec3 &planarVel, float dt)
+    void MoveFlat(const skr::Arc<fg::Physics> &physics, fr::Entity entity, WildPokemonAI &ai,
+                  fg::RigidBodyComponent &rb, const glm::vec3 &planarVel)
     {
-        if(!physics || !IsPhysicsAttached(registry, entity))
+        FREYR_TRACE("APP", "WildAI.MoveFlat");
+        if(!physics || !rb.body.IsValid())
         {
             return;
         }
 
-        FaceFlat(registry, physics, entity, planarVel);
+        FaceFlat(physics, entity, ai, planarVel);
 
         // Gameplay drives XZ only; Y stays with physics gravity.
         const glm::vec3 current = physics->GetCharacterVelocity(entity);
-        glm::vec3       desired {planarVel.x, current.y, planarVel.z};
-        physics->MoveCharacter(entity, desired);
-        (void)dt;
+        physics->MoveCharacter(entity, {planarVel.x, current.y, planarVel.z});
     }
 
     void PlayLoco(fr::Registry &registry, const skr::Arc<fg::AnimationController> &animation,
@@ -83,18 +87,43 @@ namespace
         {
             return;
         }
-        PokemonCombat::PlayMoveAnim(registry, animation, entity, clip);
-        ai.locoClip = std::string(clip);
+
+        FREYR_TRACE("APP", "WildAI.PlayLoco");
+        fr::Entity animator = fg::kInvalidEntity;
+        if(ai.animatorEntity >= 0)
+        {
+            animator = static_cast<fr::Entity>(ai.animatorEntity);
+            if(!registry.HasComponent<fg::AnimatorComponent>(animator))
+            {
+                animator          = fg::kInvalidEntity;
+                ai.animatorEntity = -1;
+            }
+        }
+        if(animator == fg::kInvalidEntity)
+        {
+            FREYR_TRACE("APP", "WildAI.FindAnimator");
+            animator = PokemonCombat::FindAnimator(registry, entity);
+            ai.animatorEntity =
+                animator != fg::kInvalidEntity ? static_cast<std::int64_t>(animator) : -1;
+        }
+        if(animator != fg::kInvalidEntity)
+        {
+            animation->CrossFade(animator, clip, 0.08f);
+            animation->SetLoop(animator, true);
+        }
+        ai.locoClip.assign(clip.data(), clip.size());
+    }
+
+    void ZeroPlanar(const skr::Arc<fg::Physics> &physics, fr::Entity entity)
+    {
+        FREYR_TRACE("APP", "WildAI.ZeroPlanar");
+        PokemonCombat::ZeroPlanarVelocity(physics, entity);
     }
 
     [[nodiscard]] int PickMoveSlot(PokemonMoveset &moves, float distanceToTarget)
     {
-        struct Candidate
-        {
-            int   slot  = 0;
-            float score = 0.0f;
-        };
-        std::vector<Candidate> options;
+        int   bestSlot  = -1;
+        float bestScore = -1e9f;
         for(int slot = 0; slot < 4; ++slot)
         {
             const MoveDef *def = FindMove(PokemonCombat::MoveIdAt(moves, slot));
@@ -115,15 +144,13 @@ namespace
             {
                 score -= 20.0f;
             }
-            options.push_back({slot, score});
+            if(score > bestScore)
+            {
+                bestScore = score;
+                bestSlot  = slot;
+            }
         }
-        if(options.empty())
-        {
-            return -1;
-        }
-        std::sort(options.begin(), options.end(),
-                  [](const Candidate &a, const Candidate &b) { return a.score > b.score; });
-        return options.front().slot;
+        return bestSlot;
     }
 } // namespace
 
@@ -136,6 +163,7 @@ WildAISystem::WildAISystem(const skr::Arc<fr::Registry> &registry,
 
 void WildAISystem::drainPendingDestroys()
 {
+    FREYR_TRACE("APP", "WildAI.DrainDestroys");
     fr::Entity entity = fg::kInvalidEntity;
     while(mPendingDestroy.try_pop(entity))
     {
@@ -150,15 +178,19 @@ void WildAISystem::drainPendingDestroys()
 
 void WildAISystem::Update(float deltaTime)
 {
+    FREYR_TRACE("APP", "WildAI.Update");
     if(deltaTime <= 0.0f)
     {
         return;
     }
 
-    if(mPlayer == fg::kInvalidEntity || !mRegistry->HasComponent<PlayerTag>(mPlayer))
     {
-        const auto player = mRegistry->CreateQuery()->First<PlayerTag>();
-        mPlayer = player.has_value() ? player.value() : fg::kInvalidEntity;
+        FREYR_TRACE("APP", "WildAI.SnapshotPlayer");
+        if(mPlayer == fg::kInvalidEntity || !mRegistry->HasComponent<PlayerTag>(mPlayer))
+        {
+            const auto player = mRegistry->CreateQuery()->First<PlayerTag>();
+            mPlayer = player.has_value() ? player.value() : fg::kInvalidEntity;
+        }
     }
 
     glm::vec3 playerPos {};
@@ -167,7 +199,8 @@ void WildAISystem::Update(float deltaTime)
        mRegistry->HasComponent<PokemonVitals>(mPlayer) &&
        mRegistry->HasComponent<fg::TransformComponent>(mPlayer))
     {
-        playerPos = fg::TransformUtil::WorldPose(*mRegistry, mPlayer).position;
+        mRegistry->TryGetComponents<fg::TransformComponent>(
+            mPlayer, [&](fg::TransformComponent &t) { playerPos = t.position; });
         mRegistry->TryGetComponents<PokemonVitals>(
             mPlayer, [&](PokemonVitals &vitals) { playerAlive = !vitals.knockedOut; });
     }
@@ -178,14 +211,17 @@ void WildAISystem::Update(float deltaTime)
 
     const bool hasPlayer = playerAlive && mPlayer != fg::kInvalidEntity;
 
-    mRegistry->CreateMutation()->EachAsync(
+    mRegistry->CreateMutation()
+        ->WithLabel("WildAI")
+        .EachAsync(
         [&](fr::Entity entity, WildPokemonAI &ai, PokemonVitals &vitals, PokemonMoveset &moves,
-            PokemonCombatState &combat, fg::TransformComponent &) {
-            const auto pose = fg::TransformUtil::WorldPose(*mRegistry, entity);
-            const glm::vec3 pos = pose.position;
+            PokemonCombatState &combat, PokemonStatus &status, fg::RigidBodyComponent &rb,
+            fg::TransformComponent &transform) {
+            const glm::vec3& pos = transform.position;
 
             if(ai.state == WildAIState::kFainted || vitals.knockedOut)
             {
+                FREYR_TRACE("APP", "WildAI.Fainted");
                 if(ai.state != WildAIState::kFainted)
                 {
                     ai.state      = WildAIState::kFainted;
@@ -201,13 +237,13 @@ void WildAISystem::Update(float deltaTime)
                     }
                     ai.faintTimer = delay;
                     PokemonCombat::PlayKoAnim(*mRegistry, mAnimation, entity);
-                    PokemonCombat::ZeroPlanarVelocity(mPhysics, entity);
+                    ZeroPlanar(mPhysics, entity);
                     combat.phase = PokemonCombat::kPhaseIdle;
                     combat.activeMove.clear();
                 }
 
                 ai.faintTimer -= deltaTime;
-                PokemonCombat::ZeroPlanarVelocity(mPhysics, entity);
+                ZeroPlanar(mPhysics, entity);
                 if(ai.faintTimer <= 0.0f)
                 {
                     mPendingDestroy.emplace(entity);
@@ -215,7 +251,7 @@ void WildAISystem::Update(float deltaTime)
                 return;
             }
 
-            if(PokemonCombat::IsStunned(*mRegistry, entity))
+            if(status.stunTimer > 0.0f)
             {
                 // Let physics knockback resolve — do not zero velocity or steer.
                 ai.locoClip.clear();
@@ -266,6 +302,7 @@ void WildAISystem::Update(float deltaTime)
 
             if(ai.state == WildAIState::kFleeing)
             {
+                FREYR_TRACE("APP", "WildAI.Flee");
                 glm::vec3 escapePos = {ai.homeX, pos.y, ai.homeZ};
                 float     escapeR   = 2.0f;
                 if(ai.spawnArea >= 0)
@@ -282,8 +319,10 @@ void WildAISystem::Update(float deltaTime)
                                 {
                                     return;
                                 }
-                                escapePos =
-                                    fg::TransformUtil::WorldPose(*mRegistry, escape).position;
+                                mRegistry->TryGetComponents<fg::TransformComponent>(
+                                    escape, [&](fg::TransformComponent &t) {
+                                        escapePos = t.position;
+                                    });
                                 mRegistry->TryGetComponents<WildEscapeArea>(
                                     escape, [&](WildEscapeArea &esc) { escapeR = esc.radius; });
                             });
@@ -300,8 +339,7 @@ void WildAISystem::Update(float deltaTime)
                 {
                     toEscape = glm::normalize(toEscape);
                     PlayLoco(*mRegistry, mAnimation, entity, ai, kClipRun);
-                    MoveFlat(*mRegistry, mPhysics, entity, toEscape * (ai.moveSpeed * 1.85f),
-                             deltaTime);
+                    MoveFlat(mPhysics, entity, ai, rb, toEscape * (ai.moveSpeed * 1.85f));
                 }
                 else
                 {
@@ -312,6 +350,7 @@ void WildAISystem::Update(float deltaTime)
 
             if(ai.state == WildAIState::kCombat)
             {
+                FREYR_TRACE("APP", "WildAI.Combat");
                 fr::Entity target = static_cast<fr::Entity>(ai.target);
                 if(ai.target < 0 || !mRegistry->HasComponent<PokemonVitals>(target))
                 {
@@ -340,13 +379,18 @@ void WildAISystem::Update(float deltaTime)
                     return;
                 }
 
-                const glm::vec3 tpos = fg::TransformUtil::WorldPose(*mRegistry, target).position;
-                glm::vec3       toT {tpos.x - pos.x, 0.0f, tpos.z - pos.z};
-                const float     dist = glm::length(toT);
+                glm::vec3 tpos = pos;
+                if(mRegistry->HasComponent<fg::TransformComponent>(target))
+                {
+                    mRegistry->TryGetComponents<fg::TransformComponent>(
+                        target, [&](fg::TransformComponent &t) { tpos = t.position; });
+                }
+                glm::vec3   toT {tpos.x - pos.x, 0.0f, tpos.z - pos.z};
+                const float dist = glm::length(toT);
                 if(dist > 1e-4f)
                 {
                     toT = glm::normalize(toT);
-                    FaceFlat(*mRegistry, mPhysics, entity, toT);
+                    FaceFlat(mPhysics, entity, ai, toT);
                 }
 
                 const float combatRunSpeed = ai.moveSpeed * 1.75f;
@@ -358,66 +402,77 @@ void WildAISystem::Update(float deltaTime)
                        def->chargeSec <= 0.0f)
                     {
                         PlayLoco(*mRegistry, mAnimation, entity, ai, kClipRun);
-                        MoveFlat(*mRegistry, mPhysics, entity, toT * combatRunSpeed, deltaTime);
+                        MoveFlat(mPhysics, entity, ai, rb, toT * combatRunSpeed);
                     }
                     else
                     {
                         PlayLoco(*mRegistry, mAnimation, entity, ai, kClipIdle);
-                        PokemonCombat::ZeroPlanarVelocity(mPhysics, entity);
-                        PokemonCombat::TryStartMove(*mRegistry, entity, vitals, moves, combat,
-                                                    slot, toT);
+                        ZeroPlanar(mPhysics, entity);
+                        {
+                            FREYR_TRACE("APP", "WildAI.TryStartMove");
+                            PokemonCombat::TryStartMove(*mRegistry, entity, vitals, moves, combat,
+                                                        slot, toT);
+                        }
                     }
                 }
                 else if(dist > 1.2f)
                 {
                     PlayLoco(*mRegistry, mAnimation, entity, ai, kClipRun);
-                    MoveFlat(*mRegistry, mPhysics, entity, toT * combatRunSpeed, deltaTime);
+                    MoveFlat(mPhysics, entity, ai, rb, toT * combatRunSpeed);
                 }
                 else
                 {
                     PlayLoco(*mRegistry, mAnimation, entity, ai, kClipIdle);
-                    PokemonCombat::ZeroPlanarVelocity(mPhysics, entity);
+                    ZeroPlanar(mPhysics, entity);
                 }
                 return;
             }
 
-            ai.wanderTimer -= deltaTime;
-            if(ai.wanderTimer <= 0.0f)
             {
-                const float angle = RandRange(0.0f, 6.2831853f);
-                ai.wanderDirX     = std::cos(angle);
-                ai.wanderDirZ     = std::sin(angle);
-                ai.wanderTimer    = RandRange(1.2f, 3.5f);
-            }
+                FREYR_TRACE("APP", "WildAI.Wander");
+                ai.wanderTimer -= deltaTime;
+                if(ai.wanderTimer <= 0.0f)
+                {
+                    const float angle = RandomAngle();
+                    ai.wanderDirX     = std::cos(angle);
+                    ai.wanderDirZ     = std::sin(angle);
+                    ai.wanderTimer    = RandomTimer();
+                }
 
-            const glm::vec3 wanderVel {ai.wanderDirX * ai.moveSpeed, 0.0f,
-                                       ai.wanderDirZ * ai.moveSpeed};
-            glm::vec3       next = pos + wanderVel * deltaTime;
-            const glm::vec3 home {ai.homeX, 0.0f, ai.homeZ};
-            glm::vec3       fromHome {next.x - home.x, 0.0f, next.z - home.z};
-            const float     homeDist = glm::length(fromHome);
-            if(homeDist > ai.spawnRadius)
-            {
-                fromHome      = glm::normalize(fromHome);
-                ai.wanderDirX = -fromHome.x;
-                ai.wanderDirZ = -fromHome.z;
-            }
-            const glm::vec3 vel {ai.wanderDirX * ai.moveSpeed, 0.0f, ai.wanderDirZ * ai.moveSpeed};
-            if(glm::length(glm::vec3 {vel.x, 0.0f, vel.z}) > 1e-4f)
-            {
-                PlayLoco(*mRegistry, mAnimation, entity, ai, kClipWalk);
-                MoveFlat(*mRegistry, mPhysics, entity, vel, deltaTime);
-            }
-            else
-            {
-                PlayLoco(*mRegistry, mAnimation, entity, ai, kClipIdle);
-                PokemonCombat::ZeroPlanarVelocity(mPhysics, entity);
+                const glm::vec3 wanderVel {ai.wanderDirX * ai.moveSpeed, 0.0f,
+                                           ai.wanderDirZ * ai.moveSpeed};
+                glm::vec3       next = pos + wanderVel * deltaTime;
+                const glm::vec3 home {ai.homeX, 0.0f, ai.homeZ};
+                glm::vec3       fromHome {next.x - home.x, 0.0f, next.z - home.z};
+                const float     homeDist = glm::length(fromHome);
+                if(homeDist > ai.spawnRadius)
+                {
+                    fromHome      = glm::normalize(fromHome);
+                    ai.wanderDirX = -fromHome.x;
+                    ai.wanderDirZ = -fromHome.z;
+                }
+                const glm::vec3 vel {ai.wanderDirX * ai.moveSpeed, 0.0f,
+                                     ai.wanderDirZ * ai.moveSpeed};
+                if(vel.x * vel.x + vel.z * vel.z > 1e-8f)
+                {
+                    PlayLoco(*mRegistry, mAnimation, entity, ai, kClipWalk);
+                    MoveFlat(mPhysics, entity, ai, rb, vel);
+                }
+                else
+                {
+                    PlayLoco(*mRegistry, mAnimation, entity, ai, kClipIdle);
+                    ZeroPlanar(mPhysics, entity);
+                }
             }
         });
 }
 
-void WildAISystem::PostUpdate(float /*deltaTime*/) {
-
-
+void WildAISystem::PostUpdate(float /*deltaTime*/)
+{
+    FREYR_TRACE("APP", "WildAI.PostUpdate");
+    {
+        FREYR_TRACE("APP", "WildAI.ExecuteTasks");
+        mRegistry->ExecuteTasks();
+    }
     drainPendingDestroys();
 }

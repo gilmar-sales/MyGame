@@ -160,6 +160,11 @@ struct WildPokemonAI: fr::Component
     float        moveSpeed   = 2.2f;
     /// Last locomotion clip name (avoids restarting CrossFade every frame).
     std::string  locoClip;
+    /// Cached animator entity for loco CrossFade (-1 = unresolved).
+    std::int64_t animatorEntity = -1;
+    /// Last applied planar facing (unit XZ); skip SetCharacterFacing when unchanged.
+    float        faceDirX = 0.0f;
+    float        faceDirZ = 0.0f;
 };
 
 struct WildSpawnArea: fr::Component

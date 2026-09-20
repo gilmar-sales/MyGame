@@ -73,6 +73,11 @@ namespace PokemonCombat
             return;
         }
         const glm::vec3 v = physics->GetCharacterVelocity(entity);
+        // Idle wilds hit this every frame — skip physics writes when already stopped.
+        if(v.x * v.x + v.z * v.z < 1e-8f)
+        {
+            return;
+        }
         physics->MoveCharacter(entity, {0.0f, v.y, 0.0f});
         physics->SetLinearVelocity(entity, {0.0f, 0.0f, 0.0f});
         physics->SetAngularVelocity(entity, {});
