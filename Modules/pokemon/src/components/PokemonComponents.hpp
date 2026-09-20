@@ -168,7 +168,7 @@ struct WildSpawnArea: fr::Component
     /// 0 aggressive, 1 peaceful, 2 skittish, 3 cowardly
     std::int64_t personality       = 1;
     float        spawnRadius       = 8.0f;
-    std::int64_t maxCount          = 1000;
+    std::int64_t maxCount          = 8;
     float        faintRespawnDelay = 30.0f;
     float        alertRadius       = 5.0f;
     std::int64_t levelMin          = 8;

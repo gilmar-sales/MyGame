@@ -5,6 +5,7 @@
 #include <Frigga/ECS/Components/HierarchyComponent.hpp>
 #include <Frigga/Physics/Physics.hpp>
 
+#include <Freyr/Containers/UnboundedMPMCQueue.hpp>
 #include <Freyr/Freyr.hpp>
 #include <Skirnir/Skirnir.hpp>
 
@@ -15,9 +16,15 @@ class WildAISystem: public fr::System
                  const skr::Arc<fg::AnimationController> &animation);
 
     void Update(float deltaTime) override;
+    void PostUpdate(float deltaTime) override;
 
   private:
+    void drainPendingDestroys();
+
     skr::Arc<fg::Physics>             mPhysics;
     skr::Arc<fg::AnimationController> mAnimation;
     fr::Entity                        mPlayer = fg::kInvalidEntity;
+
+    /// Filled from EachAsync workers; drained serially after ExecuteTasks.
+    rigtorp::UnboundedMPMCQueue<fr::Entity> mPendingDestroy;
 };

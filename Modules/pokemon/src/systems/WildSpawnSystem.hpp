@@ -11,6 +11,8 @@
 #include <Freyr/Freyr.hpp>
 #include <Skirnir/Skirnir.hpp>
 
+#include <string>
+
 class WildSpawnSystem: public fr::System
 {
   public:
@@ -22,10 +24,15 @@ class WildSpawnSystem: public fr::System
     void Update(float deltaTime) override;
 
   private:
-    void SpawnOne(fr::Entity areaEntity, WildSpawnArea &area, const glm::vec3 &center);
+    [[nodiscard]] bool SpawnOne(fr::Entity areaEntity, WildSpawnArea &area, const glm::vec3 &center);
+    [[nodiscard]] const std::string *CachedBulbasaurPrefabJson();
 
     skr::Arc<fg::PrimitiveMeshFactory> mPrimitives;
     skr::Arc<fg::AssetRegistry>        mAssets;
     skr::Arc<fg::Scene>                mScene;
     skr::Arc<fg::Physics>              mPhysics;
+
+    std::string mPrefabJson;
+    bool        mPrefabJsonLoaded = false;
+    bool        mPrefabJsonMissing = false;
 };

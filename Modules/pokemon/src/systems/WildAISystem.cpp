@@ -7,6 +7,7 @@
 #include "systems/WildPhysicsUtil.hpp"
 
 #include <Frigga/ECS/Components/HierarchyComponent.hpp>
+#include <Frigga/ECS/Components/RigidBodyComponent.hpp>
 #include <Frigga/ECS/Components/TransformComponent.hpp>
 #include <Frigga/ECS/TransformUtil.hpp>
 
@@ -33,6 +34,18 @@ namespace
         return dist(rng);
     }
 
+    [[nodiscard]] bool IsPhysicsAttached(fr::Registry &registry, fr::Entity entity)
+    {
+        if(!registry.HasComponent<fg::RigidBodyComponent>(entity))
+        {
+            return false;
+        }
+        bool valid = false;
+        registry.TryGetComponents<fg::RigidBodyComponent>(
+            entity, [&](fg::RigidBodyComponent &rb) { valid = rb.body.IsValid(); });
+        return valid;
+    }
+
     void FaceFlat(fr::Registry &, const skr::Arc<fg::Physics> &physics, fr::Entity entity,
                   const glm::vec3 &dirFlat)
     {
@@ -45,15 +58,15 @@ namespace
         physics->SetCharacterFacing(entity, rot);
     }
 
+    /// Parallel-safe locomotion: never AttachCharacter / ExecuteTasks (spawn owns that).
     void MoveFlat(fr::Registry &registry, const skr::Arc<fg::Physics> &physics, fr::Entity entity,
                   const glm::vec3 &planarVel, float dt)
     {
-        if(!physics)
+        if(!physics || !IsPhysicsAttached(registry, entity))
         {
             return;
         }
 
-        WildPhysics::AttachCharacter(registry, physics, entity);
         FaceFlat(registry, physics, entity, planarVel);
 
         // Gameplay drives XZ only; Y stays with physics gravity.
@@ -121,6 +134,20 @@ WildAISystem::WildAISystem(const skr::Arc<fr::Registry> &registry,
 {
 }
 
+void WildAISystem::drainPendingDestroys()
+{
+    fr::Entity entity = fg::kInvalidEntity;
+    while(mPendingDestroy.try_pop(entity))
+    {
+        if(!mRegistry->HasComponent<WildPokemonAI>(entity))
+        {
+            continue;
+        }
+        WildPhysics::DestroyCharacter(*mRegistry, mPhysics, entity);
+        fg::TransformUtil::DestroySubtree(*mRegistry, entity);
+    }
+}
+
 void WildAISystem::Update(float deltaTime)
 {
     if(deltaTime <= 0.0f)
@@ -151,9 +178,7 @@ void WildAISystem::Update(float deltaTime)
 
     const bool hasPlayer = playerAlive && mPlayer != fg::kInvalidEntity;
 
-    std::vector<fr::Entity> destroyList;
-
-    mRegistry->CreateMutation()->Each(
+    mRegistry->CreateMutation()->EachAsync(
         [&](fr::Entity entity, WildPokemonAI &ai, PokemonVitals &vitals, PokemonMoveset &moves,
             PokemonCombatState &combat, fg::TransformComponent &) {
             const auto pose = fg::TransformUtil::WorldPose(*mRegistry, entity);
@@ -185,7 +210,7 @@ void WildAISystem::Update(float deltaTime)
                 PokemonCombat::ZeroPlanarVelocity(mPhysics, entity);
                 if(ai.faintTimer <= 0.0f)
                 {
-                    destroyList.push_back(entity);
+                    mPendingDestroy.emplace(entity);
                 }
                 return;
             }
@@ -268,7 +293,7 @@ void WildAISystem::Update(float deltaTime)
                 const float distEsc = glm::length(toEscape);
                 if(distEsc <= escapeR)
                 {
-                    destroyList.push_back(entity);
+                    mPendingDestroy.emplace(entity);
                     return;
                 }
                 if(distEsc > 1e-4f)
@@ -389,13 +414,10 @@ void WildAISystem::Update(float deltaTime)
                 PokemonCombat::ZeroPlanarVelocity(mPhysics, entity);
             }
         });
+}
 
-    for(const fr::Entity entity : destroyList)
-    {
-        if(mRegistry->HasComponent<WildPokemonAI>(entity))
-        {
-            WildPhysics::DestroyCharacter(*mRegistry, mPhysics, entity);
-            fg::TransformUtil::DestroySubtree(*mRegistry, entity);
-        }
-    }
+void WildAISystem::PostUpdate(float /*deltaTime*/) {
+
+
+    drainPendingDestroys();
 }

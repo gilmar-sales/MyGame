@@ -24,7 +24,7 @@
 
 #include <algorithm>
 #include <cmath>
-#include <filesystem>
+#include <fstream>
 #include <random>
 #include <string>
 #include <vector>
@@ -32,6 +32,9 @@
 namespace
 {
     constexpr std::string_view kBulbasaurPrefab = "Prefabs/Bulbasaur.prefab";
+    /// Global budget: Prefab::Instantiate deserializes + scans named entities (O(scene)).
+    /// Per-area caps used to explode to dozens of loads in one Simulation tick.
+    constexpr int kMaxSpawnPerFrame = 32;
 
     thread_local std::mt19937 rng {std::random_device {}()};
 
@@ -90,7 +93,35 @@ WildSpawnSystem::WildSpawnSystem(const skr::Arc<fr::Registry> &registry,
 {
 }
 
-void WildSpawnSystem::SpawnOne(fr::Entity areaEntity, WildSpawnArea &area, const glm::vec3 &center)
+const std::string *WildSpawnSystem::CachedBulbasaurPrefabJson()
+{
+    if(mPrefabJsonMissing)
+    {
+        return nullptr;
+    }
+    if(mPrefabJsonLoaded)
+    {
+        return &mPrefabJson;
+    }
+
+    const auto prefabPath = fg::AssetRegistry::ToAbsoluteResourcePath(kBulbasaurPrefab);
+    std::ifstream file(prefabPath, std::ios::binary);
+    if(!file)
+    {
+        mPrefabJsonMissing = true;
+        return nullptr;
+    }
+    mPrefabJson.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    mPrefabJsonLoaded = true;
+    if(mPrefabJson.empty())
+    {
+        mPrefabJsonMissing = true;
+        return nullptr;
+    }
+    return &mPrefabJson;
+}
+
+bool WildSpawnSystem::SpawnOne(fr::Entity areaEntity, WildSpawnArea &area, const glm::vec3 &center)
 {
     const SpeciesDef *species = FindSpecies(area.speciesId);
     if(species == nullptr)
@@ -99,7 +130,7 @@ void WildSpawnSystem::SpawnOne(fr::Entity areaEntity, WildSpawnArea &area, const
     }
     if(species == nullptr || !mPrimitives)
     {
-        return;
+        return false;
     }
 
     const float angle = Rand01() * 6.2831853f;
@@ -134,49 +165,49 @@ void WildSpawnSystem::SpawnOne(fr::Entity areaEntity, WildSpawnArea &area, const
     ai.spawnRadius = area.spawnRadius;
     ai.wanderTimer = 0.5f + Rand01();
     {
-        const float angle = Rand01() * 6.2831853f;
-        ai.wanderDirX     = std::cos(angle);
-        ai.wanderDirZ     = std::sin(angle);
+        const float wanderAngle = Rand01() * 6.2831853f;
+        ai.wanderDirX           = std::cos(wanderAngle);
+        ai.wanderDirZ           = std::sin(wanderAngle);
     }
 
-    // Combat root — visuals come from the Bulbasaur prefab (mesh + textures + animator).
     const fr::Entity root = mRegistry->CreateEntity(
         fg::NameComponent {.name = "WildBulbasaur"},
         fg::TransformComponent {.position = pos},
         fg::HealthBarComponent {.fill = 1.0f, .offset = {0.0f, 1.4f, 0.0f}}, identity,
         PokemonIVs {}, PokemonStats {.dirty = true}, types, PokemonVitals {}, PokemonMoveset {},
         PokemonCombatState {}, PokemonStatus {}, PokemonTeam {.team = PokemonTeamId::kWild}, ai);
+    // One flush for the combat root before parenting the visual under it.
     mRegistry->ExecuteTasks();
 
     bool spawnedVisual = false;
     if(mScene)
     {
-        const auto prefabPath = fg::AssetRegistry::ToAbsoluteResourcePath(kBulbasaurPrefab);
-        fr::Entity visualRoot = fg::kInvalidEntity;
-        if(std::filesystem::is_regular_file(prefabPath) &&
-           fg::Prefab::Load(*mScene, prefabPath, root, visualRoot) &&
-           visualRoot != fg::kInvalidEntity)
+        if(const auto *json = CachedBulbasaurPrefabJson())
         {
-            // Prefab was saved with the player's world offset; keep it local under the wild root.
-            ResetLocalTransform(*mRegistry, visualRoot);
-            if(mRegistry->HasComponent<fg::NameComponent>(visualRoot))
+            fr::Entity visualRoot = fg::kInvalidEntity;
+            if(fg::Prefab::Instantiate(*mScene, *json, root, visualRoot) &&
+               visualRoot != fg::kInvalidEntity)
             {
-                mRegistry->TryGetComponents<fg::NameComponent>(
-                    visualRoot, [&](fg::NameComponent &n) { n.name = "WildBulbasaurMesh"; });
+                ResetLocalTransform(*mRegistry, visualRoot);
+                if(mRegistry->HasComponent<fg::NameComponent>(visualRoot))
+                {
+                    mRegistry->TryGetComponents<fg::NameComponent>(
+                        visualRoot, [&](fg::NameComponent &n) { n.name = "WildBulbasaurMesh"; });
+                }
+                if(mRegistry->HasComponent<fg::AnimatorComponent>(visualRoot))
+                {
+                    mRegistry->TryGetComponents<fg::AnimatorComponent>(
+                        visualRoot, [&](fg::AnimatorComponent &anim) {
+                            anim.playing = true;
+                            anim.loop    = true;
+                            if(anim.clipName.empty())
+                            {
+                                anim.clipName = "model_skeleton|001aidle";
+                            }
+                        });
+                }
+                spawnedVisual = true;
             }
-            if(mRegistry->HasComponent<fg::AnimatorComponent>(visualRoot))
-            {
-                mRegistry->TryGetComponents<fg::AnimatorComponent>(
-                    visualRoot, [&](fg::AnimatorComponent &anim) {
-                        anim.playing = true;
-                        anim.loop    = true;
-                        if(anim.clipName.empty())
-                        {
-                            anim.clipName = "model_skeleton|001aidle";
-                        }
-                    });
-            }
-            spawnedVisual = true;
         }
     }
 
@@ -193,9 +224,8 @@ void WildSpawnSystem::SpawnOne(fr::Entity areaEntity, WildSpawnArea &area, const
         fg::TransformUtil::SetParent(*mRegistry, visual, root, false);
     }
 
-    // Character: Dynamic Sphere matching Player RigidBody (centerOffset lifts feet).
-    // Character: Dynamic Sphere matching Player (mid-play body via Physics::EnsureBody).
     WildPhysics::AttachCharacter(*mRegistry, mPhysics, root);
+    return true;
 }
 
 void WildSpawnSystem::Update(float)
@@ -208,17 +238,15 @@ void WildSpawnSystem::Update(float)
     struct AreaInfo
     {
         fr::Entity    entity = fg::kInvalidEntity;
-        WildSpawnArea area {};
         glm::vec3     center {};
         int           count = 0;
     };
 
     std::vector<AreaInfo> areas;
     mRegistry->CreateMutation()->Each(
-        [&](fr::Entity entity, WildSpawnArea &area, fg::TransformComponent &) {
+        [&](fr::Entity entity, WildSpawnArea &, fg::TransformComponent &) {
             AreaInfo info;
             info.entity = entity;
-            info.area   = area;
             info.center = fg::TransformUtil::WorldPose(*mRegistry, entity).position;
             areas.push_back(info);
         });
@@ -238,9 +266,20 @@ void WildSpawnSystem::Update(float)
         }
     });
 
+    int spawnedThisFrame = 0;
     for(AreaInfo &info : areas)
     {
+        if(spawnedThisFrame >= kMaxSpawnPerFrame)
+        {
+            break;
+        }
+
         mRegistry->TryGetComponents<WildSpawnArea>(info.entity, [&](WildSpawnArea &area) {
+            if(spawnedThisFrame >= kMaxSpawnPerFrame)
+            {
+                return;
+            }
+
             const int live = info.count;
             if(live >= static_cast<int>(area.lastLiveCount))
             {
@@ -252,13 +291,15 @@ void WildSpawnSystem::Update(float)
 
             const int need = static_cast<int>(area.maxCount) - live -
                              static_cast<int>(area.pendingSpawns);
-            // Cap per frame so prefab instantiate cannot hitch the sim.
-            constexpr int kMaxSpawnPerFrame = 8;
-            const int     toSpawn = std::min(need, kMaxSpawnPerFrame);
-            for(int i = 0; i < toSpawn; ++i)
+            if(need <= 0)
             {
-                SpawnOne(info.entity, area, info.center);
+                return;
+            }
+
+            if(SpawnOne(info.entity, area, info.center))
+            {
                 ++area.pendingSpawns;
+                ++spawnedThisFrame;
             }
         });
     }

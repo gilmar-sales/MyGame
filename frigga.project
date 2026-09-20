@@ -18,28 +18,28 @@
     {
       "id": "charactermovement",
       "target": "charactermovement",
-      "library": "build/libcharactermovement.so",
+      "library": "build/charactermovement.dll",
       "enabled": true,
       "source": "user"
     },
     {
       "id": "thirdpersoncamera",
       "target": "thirdpersoncamera",
-      "library": "build/libthirdpersoncamera.so",
+      "library": "build/thirdpersoncamera.dll",
       "enabled": true,
       "source": "user"
     },
     {
       "id": "pokemon",
       "target": "pokemon",
-      "library": "build/libpokemon.so",
+      "library": "build/pokemon.dll",
       "enabled": true,
       "source": "project"
     }
   ],
   "engine": {
-    "friggaSdk": "/home/gilmar/dev/Frigga/build/Sdk",
-    "friggaRoot": "/home/gilmar/dev/Frigga/build/Sdk",
-    "friggaBuild": "/home/gilmar/dev/Frigga/build/Sdk"
+    "friggaSdk": "",
+    "friggaRoot": "",
+    "friggaBuild": ""
   }
 }
