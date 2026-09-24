@@ -16,8 +16,8 @@
 class PokemonHudSystem: public fr::System
 {
   public:
-    /// Only singleton services — Freyr Update uses an unseeded scope, so Scoped
-    /// Freya types (Renderer / FreyaOptions) must come from Scene::GetRenderer().
+    /// Only singleton / Scene-held services — Freyr Update uses an unseeded scope, so
+    /// Scoped Freya types (Renderer / Window / FreyaOptions) must come from Scene.
     PokemonHudSystem(const skr::Arc<fr::Registry> &registry, const skr::Arc<fg::Scene> &scene,
                      const skr::Arc<fra::TexturePool> &textures,
                      const skr::Arc<fg::AssetRegistry> &assets,

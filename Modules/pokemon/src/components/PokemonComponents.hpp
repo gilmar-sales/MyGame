@@ -182,6 +182,8 @@ struct WildSpawnArea: fr::Component
     /// Runtime bookkeeping so deferred CreateEntity cannot overshoot maxCount.
     std::int64_t pendingSpawns     = 0;
     std::int64_t lastLiveCount     = 0;
+    /// Filled each spawn tick (reset + counted from WildPokemonAI.spawnArea).
+    std::int64_t liveCount         = 0;
 };
 
 struct WildEscapeArea: fr::Component

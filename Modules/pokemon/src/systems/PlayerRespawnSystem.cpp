@@ -9,7 +9,7 @@
 
 namespace
 {
-    constexpr float kPlayerRespawnDelay = 2.0f;
+    constexpr float kPlayerRespawnDelay = 8.0f;
 }
 
 PlayerRespawnSystem::PlayerRespawnSystem(const skr::Arc<fr::Registry> &registry,
@@ -25,7 +25,7 @@ void PlayerRespawnSystem::CaptureSpawn(fr::Entity player)
     {
         return;
     }
-    const auto pose = fg::TransformUtil::WorldPose(*mRegistry, player);
+    const auto pose = fg::TransformUtil::GetWorldPose(*mRegistry, player);
     mSpawnPos       = pose.position;
     mSpawnRot       = pose.rotation;
     mHasSpawn       = true;

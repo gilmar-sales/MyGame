@@ -81,6 +81,7 @@ namespace
             t.scale    = {1.0f, 1.0f, 1.0f};
             t.rotation = glm::quat {1.0f, 0.0f, 0.0f, 0.0f};
         });
+        fg::TransformUtil::MarkDirty(registry, entity);
     }
 } // namespace
 
@@ -187,9 +188,9 @@ bool WildSpawnSystem::SpawnOne(fr::Entity areaEntity, WildSpawnArea &area, const
     {
         if(const auto *json = CachedBulbasaurPrefabJson())
         {
-            fr::Entity visualRoot = fg::kInvalidEntity;
+            fr::Entity visualRoot = fr::NullEntity;
             if(fg::Prefab::Instantiate(*mScene, *json, root, visualRoot) &&
-               visualRoot != fg::kInvalidEntity)
+               visualRoot != fr::NullEntity)
             {
                 ResetLocalTransform(*mRegistry, visualRoot);
                 if(mRegistry->HasComponent<fg::NameComponent>(visualRoot))
@@ -224,7 +225,7 @@ bool WildSpawnSystem::SpawnOne(fr::Entity areaEntity, WildSpawnArea &area, const
             fg::MeshComponent {.meshId = meshId, .castShadows = true},
             fg::MaterialComponent {.materialId = matId});
         mRegistry->ExecuteTasks();
-        fg::TransformUtil::SetParent(*mRegistry, visual, root, false);
+        fg::TransformUtil::Reparent(*mRegistry, visual, root, false);
     }
 
     WildPhysics::AttachCharacter(*mRegistry, mPhysics, root);
@@ -240,7 +241,7 @@ void WildSpawnSystem::Update(float)
 
     struct AreaInfo
     {
-        fr::Entity    entity = fg::kInvalidEntity;
+        fr::Entity    entity = fr::NullEntity;
         glm::vec3     center {};
         int           count = 0;
     };
@@ -250,7 +251,7 @@ void WildSpawnSystem::Update(float)
         [&](fr::Entity entity, WildSpawnArea &, fg::TransformComponent &) {
             AreaInfo info;
             info.entity = entity;
-            info.center = fg::TransformUtil::WorldPose(*mRegistry, entity).position;
+            info.center = fg::TransformUtil::GetWorldPose(*mRegistry, entity).position;
             areas.push_back(info);
         });
 

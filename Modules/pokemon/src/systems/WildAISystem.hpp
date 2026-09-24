@@ -1,8 +1,6 @@
 #pragma once
 
-#include <Frigga/Macro.hpp>
 #include <Frigga/Animation/AnimationController.hpp>
-#include <Frigga/ECS/Components/HierarchyComponent.hpp>
 #include <Frigga/Physics/Physics.hpp>
 
 #include <Freyr/Containers/UnboundedMPMCQueue.hpp>
@@ -23,7 +21,7 @@ class WildAISystem: public fr::System
 
     skr::Arc<fg::Physics>             mPhysics;
     skr::Arc<fg::AnimationController> mAnimation;
-    fr::Entity                        mPlayer = fg::kInvalidEntity;
+    fr::Entity                        mPlayer = fr::NullEntity;
 
     /// Filled from EachAsync workers; drained serially after ExecuteTasks.
     rigtorp::UnboundedMPMCQueue<fr::Entity> mPendingDestroy;

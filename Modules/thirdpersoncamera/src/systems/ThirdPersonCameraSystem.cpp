@@ -2,7 +2,6 @@
 
 #include "components/ThirdPersonCameraComponent.hpp"
 
-#include <Frigga/ECS/Components/HierarchyComponent.hpp>
 #include <Frigga/ECS/Components/TransformComponent.hpp>
 #include <Frigga/ECS/TransformUtil.hpp>
 #include <Frigga/Physics/PhysicsTypes.hpp>
@@ -35,13 +34,13 @@ void ThirdPersonCameraSystem::Update(float)
             orbit.distance -= mInput->GetAxis(orbit.zoomAxis);
             orbit.distance = std::clamp(orbit.distance, orbit.minDistance, orbit.maxDistance);
 
-            glm::vec3  targetPos    = fg::TransformUtil::WorldPose(*mRegistry, entity).position;
-            fr::Entity targetEntity = fg::kInvalidEntity;
-            if(orbit.target.id != fg::kInvalidEntity &&
+            glm::vec3  targetPos    = fg::TransformUtil::GetWorldPose(*mRegistry, entity).position;
+            fr::Entity targetEntity = fr::NullEntity;
+            if(orbit.target.id != fr::NullEntity &&
                mRegistry->HasComponent<fg::TransformComponent>(orbit.target.id))
             {
                 targetEntity = orbit.target.id;
-                targetPos = fg::TransformUtil::WorldPose(*mRegistry, targetEntity).position;
+                targetPos = fg::TransformUtil::GetWorldPose(*mRegistry, targetEntity).position;
             }
 
             const glm::vec3 pivot = targetPos + orbit.pivotOffset;
@@ -56,7 +55,7 @@ void ThirdPersonCameraSystem::Update(float)
             if(orbit.collideWithWorld && mPhysics && cameraDistance > 1e-4f)
             {
                 fg::QueryFilter filter {};
-                if(targetEntity != fg::kInvalidEntity)
+                if(targetEntity != fr::NullEntity)
                 {
                     filter.ignoreEntity = static_cast<std::uint64_t>(targetEntity);
                 }

@@ -5,7 +5,6 @@
 #include "systems/PokemonCombatUtil.hpp"
 
 #include <Frigga/ECS/Components/HealthBarComponent.hpp>
-#include <Frigga/ECS/Components/HierarchyComponent.hpp>
 #include <Frigga/ECS/Components/NameComponent.hpp>
 
 #include <Freya/Advanced.hpp>
@@ -210,21 +209,10 @@ void PokemonHudSystem::syncWorldHealthBars()
                 entity, [&](fg::HealthBarComponent &bar) { bar.fill = fill; });
         }
 
-        if(mRegistry->HasComponent<fg::HierarchyComponent>(entity))
-        {
-            mRegistry->TryGetComponents<fg::HierarchyComponent>(
-                entity, [&](fg::HierarchyComponent &hierarchy) {
-                    for(const fr::Entity child : hierarchy.children)
-                    {
-                        if(!mRegistry->HasComponent<fg::HealthBarComponent>(child))
-                        {
-                            continue;
-                        }
-                        mRegistry->TryGetComponents<fg::HealthBarComponent>(
-                            child, [&](fg::HealthBarComponent &bar) { bar.fill = fill; });
-                    }
-                });
-        }
+        mRegistry->ForEachChild(entity, [&](fr::Entity child) {
+            mRegistry->TryGetComponents<fg::HealthBarComponent>(
+                child, [&](fg::HealthBarComponent &bar) { bar.fill = fill; });
+        });
     });
 }
 
@@ -242,7 +230,7 @@ void PokemonHudSystem::drawPlayerHud(float deltaTime)
 
     ensureIcons();
 
-    fr::Entity playerEntity = fg::kInvalidEntity;
+    fr::Entity playerEntity = fr::NullEntity;
     PokemonVitals *playerVitals = nullptr;
     PokemonMoveset *playerMoves = nullptr;
     PokemonCombatState *playerCombat = nullptr;
@@ -251,7 +239,7 @@ void PokemonHudSystem::drawPlayerHud(float deltaTime)
     mRegistry->CreateMutation()->Each(
         [&](fr::Entity entity, fg::NameComponent &name, PokemonVitals &vitals,
             PokemonMoveset &moves, PokemonCombatState &combat, PokemonIdentity &identity) {
-            if(name.name != "Player" || playerEntity != fg::kInvalidEntity)
+            if(name.name != "Player" || playerEntity != fr::NullEntity)
             {
                 return;
             }
@@ -262,14 +250,20 @@ void PokemonHudSystem::drawPlayerHud(float deltaTime)
             playerIdentity = &identity;
         });
 
-    if(playerEntity == fg::kInvalidEntity || playerVitals == nullptr || playerMoves == nullptr)
+    if(playerEntity == fr::NullEntity || playerVitals == nullptr || playerMoves == nullptr)
     {
         return;
     }
 
     const auto viewport = fra::Advanced(*renderer).GetViewportImage();
-    const std::uint32_t fbW = viewport.valid ? viewport.width : 0;
-    const std::uint32_t fbH = viewport.valid ? viewport.height : 0;
+    std::uint32_t fbW = viewport.valid ? viewport.width : 0;
+    std::uint32_t fbH = viewport.valid ? viewport.height : 0;
+    // Published Runtime presents to the swapchain (no Editor offscreen viewport).
+    if((fbW == 0 || fbH == 0) && mScene->GetWindow())
+    {
+        fbW = mScene->GetWindow()->GetWidth();
+        fbH = mScene->GetWindow()->GetHeight();
+    }
     if(fbW == 0 || fbH == 0)
     {
         return;

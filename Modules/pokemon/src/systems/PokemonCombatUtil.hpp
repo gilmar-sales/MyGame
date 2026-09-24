@@ -11,8 +11,6 @@
 
 #include <Frigga/Animation/AnimationController.hpp>
 #include <Frigga/ECS/Components/AnimatorComponent.hpp>
-#include <Frigga/ECS/Components/HierarchyComponent.hpp>
-#include <Frigga/ECS/Components/NameComponent.hpp>
 #include <Frigga/ECS/Components/RigidBodyComponent.hpp>
 #include <Frigga/ECS/Components/TransformComponent.hpp>
 #include <Frigga/ECS/TransformUtil.hpp>
@@ -38,6 +36,8 @@ namespace PokemonCombat
     inline constexpr std::int64_t kPhaseLunging    = 3;
     inline constexpr std::int64_t kPhaseRecoiling  = 4;
 
+    inline constexpr std::string_view kClipKo = "001ko";
+
     [[nodiscard]] inline float SmoothStep(float t)
     {
         t = std::clamp(t, 0.0f, 1.0f);
@@ -50,7 +50,7 @@ namespace PokemonCombat
         glm::quat rotation {1.0f, 0.0f, 0.0f, 0.0f};
         if(registry.HasComponent<fg::TransformComponent>(entity))
         {
-            rotation = fg::TransformUtil::WorldPose(registry, entity).rotation;
+            rotation = fg::TransformUtil::GetWorldPose(registry, entity).rotation;
             fg::TransformUtil::SetWorldPose(registry, entity, position, rotation);
         }
 
@@ -124,15 +124,8 @@ namespace PokemonCombat
         {
             return root;
         }
-        std::vector<fr::Entity> queue;
-        if(registry.HasComponent<fg::HierarchyComponent>(root))
-        {
-            registry.TryGetComponents<fg::HierarchyComponent>(
-                root, [&](fg::HierarchyComponent &hierarchy) {
-                    queue.insert(queue.end(), hierarchy.children.begin(),
-                                 hierarchy.children.end());
-                });
-        }
+        const auto              rootChildren = registry.Children(root);
+        std::vector<fr::Entity> queue(rootChildren.begin(), rootChildren.end());
         for(std::size_t i = 0; i < queue.size(); ++i)
         {
             const fr::Entity node = queue[i];
@@ -140,17 +133,12 @@ namespace PokemonCombat
             {
                 return node;
             }
-            if(!registry.HasComponent<fg::HierarchyComponent>(node))
+            for(const auto child : registry.Children(node))
             {
-                continue;
+                queue.push_back(child);
             }
-            registry.TryGetComponents<fg::HierarchyComponent>(
-                node, [&](fg::HierarchyComponent &hierarchy) {
-                    queue.insert(queue.end(), hierarchy.children.begin(),
-                                 hierarchy.children.end());
-                });
         }
-        return fg::kInvalidEntity;
+        return fr::NullEntity;
     }
 
     [[nodiscard]] inline std::string &MoveIdAt(PokemonMoveset &moves, int slot)
@@ -211,7 +199,7 @@ namespace PokemonCombat
             return;
         }
         const fr::Entity animator = FindAnimator(registry, root);
-        if(animator != fg::kInvalidEntity)
+        if(animator != fr::NullEntity)
         {
             animation->CrossFade(animator, clip, 0.08f);
             // Loco / fight clips loop; KO explicitly disables loop in PlayKoAnim.
@@ -227,13 +215,44 @@ namespace PokemonCombat
             return;
         }
         const fr::Entity animator = FindAnimator(registry, root);
-        if(animator == fg::kInvalidEntity)
+        if(animator == fr::NullEntity)
         {
             return;
         }
-        animation->CrossFade(animator, "001ko", 0.08f);
+        animation->CrossFade(animator, kClipKo, 0.08f);
         animation->SetLoop(animator, false);
         // Stop CharacterMovement from replacing KO with idle/walk.
+        SetLocomotionLocked(registry, root, true);
+    }
+
+    /// Re-asserts the faint clip on a KO body without restarting it when it is
+    /// already playing. Covers death paths that bypass ApplyDamage (e.g. the
+    /// Leech Seed DoT in StatusEffectSystem, which has no animation service)
+    /// and any locomotion write that raced the KO frame: call every frame for
+    /// knockedOut entities.
+    inline void EnsureKoAnim(fr::Registry &registry,
+                             const skr::Arc<fg::AnimationController> &animation, fr::Entity root)
+    {
+        if(!animation)
+        {
+            return;
+        }
+        const fr::Entity animator = FindAnimator(registry, root);
+        if(animator == fr::NullEntity)
+        {
+            return;
+        }
+        bool alreadyKo = false;
+        registry.TryGetComponents<fg::AnimatorComponent>(
+            animator, [&](fg::AnimatorComponent &anim) {
+                alreadyKo = anim.clipName.find(kClipKo) != std::string::npos;
+            });
+        if(alreadyKo)
+        {
+            return;
+        }
+        animation->CrossFade(animator, kClipKo, 0.08f);
+        animation->SetLoop(animator, false);
         SetLocomotionLocked(registry, root, true);
     }
 
@@ -388,7 +407,7 @@ namespace PokemonCombat
             return false;
         }
 
-        const auto pose = fg::TransformUtil::WorldPose(registry, entity);
+        const auto pose = fg::TransformUtil::GetWorldPose(registry, entity);
         glm::vec3  forward =
             glm::dot(forwardOverride, forwardOverride) > 1e-6f ? forwardOverride
                                                                : ForwardFlat(pose.rotation);
@@ -459,7 +478,7 @@ namespace PokemonCombat
     {
         for(const auto &contact : contacts)
         {
-            fr::Entity other = fg::kInvalidEntity;
+            fr::Entity other = fr::NullEntity;
             if(contact.entityA == static_cast<std::uint64_t>(caster))
             {
                 other = static_cast<fr::Entity>(contact.entityB);
@@ -473,7 +492,7 @@ namespace PokemonCombat
                 continue;
             }
 
-            if(other == fg::kInvalidEntity || other == caster)
+            if(other == fr::NullEntity || other == caster)
             {
                 continue;
             }
@@ -493,12 +512,12 @@ namespace PokemonCombat
 
         if(candidates.empty() || !registry.HasComponent<fg::TransformComponent>(caster))
         {
-            return fg::kInvalidEntity;
+            return fr::NullEntity;
         }
 
-        const glm::vec3 casterPos = fg::TransformUtil::WorldPose(registry, caster).position;
+        const glm::vec3 casterPos = fg::TransformUtil::GetWorldPose(registry, caster).position;
         const float     casterR   = PresenceRadius(registry, caster);
-        fr::Entity      best      = fg::kInvalidEntity;
+        fr::Entity      best      = fr::NullEntity;
         float           bestDist  = 1e9f;
         for(const auto &[entity, pos] : candidates)
         {
@@ -594,9 +613,9 @@ namespace PokemonCombat
                             if(applyKnockback && move.knockbackSpeed > 0.0f)
                             {
                                 const auto atkPose =
-                                    fg::TransformUtil::WorldPose(registry, attacker);
+                                    fg::TransformUtil::GetWorldPose(registry, attacker);
                                 const auto defPose =
-                                    fg::TransformUtil::WorldPose(registry, defender);
+                                    fg::TransformUtil::GetWorldPose(registry, defender);
                                 ApplyKnockback(physics, defender,
                                                defPose.position - atkPose.position,
                                                move.knockbackSpeed);
@@ -614,7 +633,7 @@ namespace PokemonCombat
         const std::vector<std::pair<fr::Entity, glm::vec3>> &candidates, fr::Entity self,
         const glm::vec3 &origin, const glm::vec3 &forward, float range, float radius)
     {
-        fr::Entity best      = fg::kInvalidEntity;
+        fr::Entity best      = fr::NullEntity;
         float      bestScore = range + 1.0f;
 
         for(const auto &[entity, pos] : candidates)
@@ -654,7 +673,7 @@ namespace PokemonCombat
         const glm::vec3 &origin, const glm::vec3 &forward, const MoveDef &move,
         const std::vector<std::pair<fr::Entity, glm::vec3>> &candidates)
     {
-        fr::Entity target = fg::kInvalidEntity;
+        fr::Entity target = fr::NullEntity;
         if(physics)
         {
             fg::QueryFilter filter {};
@@ -671,7 +690,7 @@ namespace PokemonCombat
                 }
             }
         }
-        if(target == fg::kInvalidEntity)
+        if(target == fr::NullEntity)
         {
             target = FindClosestTarget(registry, candidates, attacker, origin, forward, move.range,
                                        move.radius);
@@ -684,12 +703,12 @@ namespace PokemonCombat
                            const MoveDef &move,
                            const std::vector<std::pair<fr::Entity, glm::vec3>> &candidates)
     {
-        const auto pose = fg::TransformUtil::WorldPose(registry, attacker);
+        const auto pose = fg::TransformUtil::GetWorldPose(registry, attacker);
         const glm::vec3 forward = ForwardFlat(pose.rotation);
         const glm::vec3 origin  = pose.position + glm::vec3 {0.0f, 0.6f, 0.0f} + forward * 0.4f;
         const fr::Entity target =
             FindTarget(registry, physics, attacker, origin, forward, move, candidates);
-        if(target != fg::kInvalidEntity)
+        if(target != fr::NullEntity)
         {
             ApplyDamage(registry, physics, animation, attacker, target, move);
         }

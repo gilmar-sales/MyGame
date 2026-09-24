@@ -30,7 +30,7 @@ void MoveCombatSystem::Update(float deltaTime)
                 return;
             }
             candidates.emplace_back(entity,
-                                    fg::TransformUtil::WorldPose(*mRegistry, entity).position);
+                                    fg::TransformUtil::GetWorldPose(*mRegistry, entity).position);
         });
 
     // Physics contacts from the last fixed step (caster CharacterVirtual vs target presence RB).
@@ -39,7 +39,7 @@ void MoveCombatSystem::Update(float deltaTime)
 
     struct PendingSpawn
     {
-        fr::Entity owner = fg::kInvalidEntity;
+        fr::Entity owner = fr::NullEntity;
         const MoveDef *def = nullptr;
         glm::vec3 origin {};
         glm::vec3 forward {};
@@ -58,6 +58,10 @@ void MoveCombatSystem::Update(float deltaTime)
                 }
                 PokemonCombat::SetLocomotionLocked(*mRegistry, entity, true);
                 PokemonCombat::ZeroPlanarVelocity(mPhysics, entity);
+                // Force faint even for deaths that bypassed ApplyDamage (Leech Seed
+                // DoT) or raced a locomotion write on the KO frame. No-op when the
+                // faint clip is already playing.
+                PokemonCombat::EnsureKoAnim(*mRegistry, mAnimation, entity);
                 combat.phase         = PokemonCombat::kPhaseIdle;
                 combat.pendingSlot   = -1;
                 combat.hitTarget     = -1;
@@ -119,7 +123,7 @@ void MoveCombatSystem::Update(float deltaTime)
                     probePos + glm::vec3 {0.0f, 0.6f, 0.0f} + forward * 0.35f;
                 const fr::Entity target = PokemonCombat::FindTarget(
                     *mRegistry, mPhysics, entity, probe, forward, *def, candidates);
-                if(target == fg::kInvalidEntity)
+                if(target == fr::NullEntity)
                 {
                     return false;
                 }
@@ -168,7 +172,7 @@ void MoveCombatSystem::Update(float deltaTime)
                     combat.phaseTimer = std::max(0.0f, combat.phaseTimer - deltaTime);
 
                     const glm::vec3 pos =
-                        fg::TransformUtil::WorldPose(*mRegistry, entity).position;
+                        fg::TransformUtil::GetWorldPose(*mRegistry, entity).position;
                     const float traveled =
                         glm::length(glm::vec3 {pos.x - origin.x, 0.0f, pos.z - origin.z});
 
@@ -181,7 +185,7 @@ void MoveCombatSystem::Update(float deltaTime)
                     {
                         const fr::Entity target = PokemonCombat::FindHostileContactTarget(
                             *mRegistry, entity, contacts, candidates);
-                        if(target != fg::kInvalidEntity)
+                        if(target != fr::NullEntity)
                         {
                             PokemonCombat::ApplyDamage(*mRegistry, mPhysics, mAnimation, entity,
                                                        target, *def, 1.0f,

@@ -3,7 +3,6 @@
 #include "components/CharacterControllerComponent.hpp"
 
 #include <Frigga/ECS/Components/AnimatorComponent.hpp>
-#include <Frigga/ECS/Components/HierarchyComponent.hpp>
 #include <Frigga/ECS/Components/NameComponent.hpp>
 #include <Frigga/ECS/Components/RigidBodyComponent.hpp>
 #include <Frigga/ECS/Components/TransformComponent.hpp>
@@ -47,14 +46,8 @@ fr::Entity CharacterMovementSystem::FindAnimator(fr::Entity player) const
     }
 
     // Prefab instances may nest the Animator one or more levels down.
-    std::vector<fr::Entity> queue;
-    if(mRegistry->HasComponent<fg::HierarchyComponent>(player))
-    {
-        mRegistry->TryGetComponents<fg::HierarchyComponent>(
-            player, [&](fg::HierarchyComponent &hierarchy) {
-                queue.insert(queue.end(), hierarchy.children.begin(), hierarchy.children.end());
-            });
-    }
+    const auto              rootChildren = mRegistry->Children(player);
+    std::vector<fr::Entity> queue(rootChildren.begin(), rootChildren.end());
 
     for(std::size_t i = 0; i < queue.size(); ++i)
     {
@@ -63,22 +56,18 @@ fr::Entity CharacterMovementSystem::FindAnimator(fr::Entity player) const
         {
             return node;
         }
-        if(!mRegistry->HasComponent<fg::HierarchyComponent>(node))
+        for(const auto child : mRegistry->Children(node))
         {
-            continue;
+            queue.push_back(child);
         }
-        mRegistry->TryGetComponents<fg::HierarchyComponent>(
-            node, [&](fg::HierarchyComponent &hierarchy) {
-                queue.insert(queue.end(), hierarchy.children.begin(), hierarchy.children.end());
-            });
     }
-    return fg::kInvalidEntity;
+    return fr::NullEntity;
 }
 
 void CharacterMovementSystem::PlayLocomotion(fr::Entity animator, std::string_view clip,
                                              float crossFadeSeconds)
 {
-    if(animator == fg::kInvalidEntity || !mAnimation || clip.empty())
+    if(animator == fr::NullEntity || !mAnimation || clip.empty())
     {
         return;
     }
@@ -86,13 +75,23 @@ void CharacterMovementSystem::PlayLocomotion(fr::Entity animator, std::string_vi
     // Combat (and other systems) can change the clip without updating mCurrentClip.
     // Re-drive when the Animator no longer matches the requested loco clip.
     bool animatorMatches = false;
+    bool oneShotPlaying  = false;
     if(mRegistry->HasComponent<fg::AnimatorComponent>(animator))
     {
         mRegistry->TryGetComponents<fg::AnimatorComponent>(
             animator, [&](fg::AnimatorComponent &anim) {
                 animatorMatches = anim.clipName == clip ||
                                   anim.clipName.find(clip) != std::string::npos;
+                // One-shot clips (KO/faint, played with loop=false) own the
+                // animator until another system hands it back with loop=true.
+                // Never let walk/run/idle stomp them.
+                oneShotPlaying = !anim.loop;
             });
+    }
+    if(oneShotPlaying)
+    {
+        mCurrentClip.clear();
+        return;
     }
     if(mCurrentClip == clip && animatorMatches)
     {
@@ -131,7 +130,7 @@ void CharacterMovementSystem::Update(float deltaTime)
             {
                 return;
             }
-            cameraRotation = fg::TransformUtil::WorldPose(*mRegistry, entity).rotation;
+            cameraRotation = fg::TransformUtil::GetWorldPose(*mRegistry, entity).rotation;
             hasCamera      = true;
         });
 
@@ -212,7 +211,7 @@ void CharacterMovementSystem::Update(float deltaTime)
             mPhysics->MoveCharacter(entity, desired);
 
             const fr::Entity animator = FindAnimator(entity);
-            if(animator == fg::kInvalidEntity || !mAnimation)
+            if(animator == fr::NullEntity || !mAnimation)
             {
                 return;
             }

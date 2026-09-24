@@ -34,10 +34,11 @@ void ProjectileSystem::Update(float deltaTime)
                 return;
             }
             candidates.emplace_back(entity,
-                                    fg::TransformUtil::WorldPose(*mRegistry, entity).position);
+                                    fg::TransformUtil::GetWorldPose(*mRegistry, entity).position);
         });
 
     std::vector<fr::Entity> toDestroy;
+    std::vector<fr::Entity> moved;
 
     mRegistry->CreateMutation()->Each(
         [&](fr::Entity entity, PokemonProjectile &proj, fg::TransformComponent &transform) {
@@ -68,6 +69,7 @@ void ProjectileSystem::Update(float deltaTime)
             transform.position       = newPos;
             transform.rotation =
                 glm::quatLookAt(-dir, glm::vec3 {0.0f, 1.0f, 0.0f});
+            moved.push_back(entity);
 
             const auto owner = static_cast<fr::Entity>(proj.owner);
             const MoveDef *def = FindMove(proj.moveId);
@@ -77,7 +79,7 @@ void ProjectileSystem::Update(float deltaTime)
                 return;
             }
 
-            fr::Entity hit = fg::kInvalidEntity;
+            fr::Entity hit = fr::NullEntity;
 
             if(mPhysics)
             {
@@ -98,7 +100,7 @@ void ProjectileSystem::Update(float deltaTime)
                 }
             }
 
-            if(hit == fg::kInvalidEntity)
+            if(hit == fr::NullEntity)
             {
                 float bestDist = proj.radius + 0.65f;
                 for(const auto &[cand, pos] : candidates)
@@ -117,7 +119,7 @@ void ProjectileSystem::Update(float deltaTime)
                 }
             }
 
-            if(hit == fg::kInvalidEntity)
+            if(hit == fr::NullEntity)
             {
                 return;
             }
@@ -137,11 +139,17 @@ void ProjectileSystem::Update(float deltaTime)
             toDestroy.push_back(entity);
         });
 
+    for(const fr::Entity entity : moved)
+    {
+        fg::TransformUtil::MarkDirty(*mRegistry, entity);
+    }
+
     for(const fr::Entity entity : toDestroy)
     {
         if(mRegistry->HasComponent<PokemonProjectile>(entity))
         {
-            fg::TransformUtil::DestroySubtree(*mRegistry, entity);
+            // Freyr cascades to the subtree; flushed at the end of the phase.
+            mRegistry->DestroyEntity(entity);
         }
     }
 }
