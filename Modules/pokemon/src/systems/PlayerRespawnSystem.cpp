@@ -3,21 +3,19 @@
 #include "components/PokemonComponents.hpp"
 #include "systems/PokemonCombatUtil.hpp"
 
-#include <Frigga/ECS/Components/AnimatorComponent.hpp>
 #include <Frigga/ECS/Components/NameComponent.hpp>
 #include <Frigga/ECS/Components/TransformComponent.hpp>
 #include <Frigga/ECS/TransformUtil.hpp>
 
 namespace
 {
-    constexpr float kKoAnimFallback = 3.0f;
+    constexpr float kPlayerRespawnDelay = 8.0f;
 }
 
 PlayerRespawnSystem::PlayerRespawnSystem(const skr::Arc<fr::Registry> &registry,
                                          const skr::Arc<fg::Physics> &physics,
-                                         const skr::Arc<fg::AnimationController> &animation,
-                                         const skr::Arc<fg::AssetRegistry> &assets)
-    : fr::System(registry), mPhysics(physics), mAnimation(animation), mAssets(assets)
+                                         const skr::Arc<fg::AnimationController> &animation)
+    : fr::System(registry), mPhysics(physics), mAnimation(animation)
 {
 }
 
@@ -128,27 +126,7 @@ void PlayerRespawnSystem::Update(float deltaTime)
 
             if(combat.koRespawnTimer <= 0.0f)
             {
-                // Set the countdown to the actual KO clip duration so the respawn
-                // fires exactly when the animation reaches its last frame.
-                float koAnimDuration = kKoAnimFallback;
-                const fr::Entity animEnt = PokemonCombat::FindAnimator(*mRegistry, entity);
-                if(animEnt != fr::NullEntity && mAssets)
-                {
-                    mRegistry->TryGetComponents<fg::AnimatorComponent>(
-                        animEnt, [&](fg::AnimatorComponent &anim) {
-                            const auto *model = mAssets->FindModel(anim.modelSource);
-                            if(model)
-                            {
-                                const auto *baked =
-                                    model->FindBakedClip(PokemonCombat::kClipKo);
-                                if(baked && baked->duration > 0.1f)
-                                {
-                                    koAnimDuration = baked->duration;
-                                }
-                            }
-                        });
-                }
-                combat.koRespawnTimer = koAnimDuration;
+                combat.koRespawnTimer = kPlayerRespawnDelay;
                 return;
             }
 
