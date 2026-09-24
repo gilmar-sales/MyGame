@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Frigga/Asset/AssetRegistry.hpp>
 #include <Frigga/Macro.hpp>
 #include <Frigga/Animation/AnimationController.hpp>
 #include <Frigga/Physics/Physics.hpp>
@@ -15,7 +16,8 @@ class PlayerRespawnSystem: public fr::System
   public:
     PlayerRespawnSystem(const skr::Arc<fr::Registry> &registry,
                         const skr::Arc<fg::Physics> &physics,
-                        const skr::Arc<fg::AnimationController> &animation);
+                        const skr::Arc<fg::AnimationController> &animation,
+                        const skr::Arc<fg::AssetRegistry> &assets);
 
     void Update(float deltaTime) override;
 
@@ -25,6 +27,7 @@ class PlayerRespawnSystem: public fr::System
 
     skr::Arc<fg::Physics>             mPhysics;
     skr::Arc<fg::AnimationController> mAnimation;
+    skr::Arc<fg::AssetRegistry>       mAssets;
     bool                              mHasSpawn = false;
     glm::vec3                         mSpawnPos {0.0f, 0.0f, 2.0f};
     glm::quat                         mSpawnRot {1.0f, 0.0f, 0.0f, 0.0f};
