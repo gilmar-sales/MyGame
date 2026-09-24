@@ -561,7 +561,7 @@ namespace PokemonCombat
                 registry.TryGetComponents<PokemonVitals, PokemonStats, PokemonTypes, PokemonStatus>(
                     defender,
                     [&](PokemonVitals &defVitals, PokemonStats &defStats, PokemonTypes &defTypes,
-                        PokemonStatus &) {
+                        PokemonStatus &defStatus) {
                         if(defVitals.knockedOut)
                         {
                             return;
@@ -619,6 +619,13 @@ namespace PokemonCombat
                                 ApplyKnockback(physics, defender,
                                                defPose.position - atkPose.position,
                                                move.knockbackSpeed);
+                                // Lock locomotion for a short window so CharacterMovementSystem
+                                // does not call SetLinearVelocity and cancel the impulse on the
+                                // same fixed step.
+                                constexpr float kKnockbackLockDur = 0.2f;
+                                defStatus.stunTimer =
+                                    std::max(defStatus.stunTimer, kKnockbackLockDur);
+                                SetLocomotionLocked(registry, defender, true);
                             }
                         }
                         NoteAttacker(registry, attacker, defender);
