@@ -2,6 +2,7 @@
 
 #include "components/PokemonComponents.hpp"
 #include "data/PokemonCatalog.hpp"
+#include "moves/MoveScript.hpp"
 #include "systems/PokemonCombatUtil.hpp"
 
 #include <Frigga/ECS/Components/TransformComponent.hpp>
@@ -144,7 +145,21 @@ void ProjectileSystem::Update(float deltaTime)
                 return;
             }
 
-            if(proj.kind == 1 || def->category == MoveCategory::Status)
+            // Scripted moves own their hit behaviour (see moves/MoveScript.hpp).
+            // Leech Seed sticks + links here; its visuals tick in LeechSeedFxSystem.
+            if(MoveScript *script = FindMoveScript(def->id))
+            {
+                const glm::vec3 hitPos = newPos;
+                MoveHitCtx ctx {.registry  = *mRegistry,
+                                .physics   = mPhysics,
+                                .animation = mAnimation,
+                                .caster    = owner,
+                                .target    = hit,
+                                .move      = *def,
+                                .hitPos    = hitPos};
+                script->OnProjectileHit(ctx);
+            }
+            else if(proj.kind == 1 || def->category == MoveCategory::Status)
             {
                 PokemonCombat::ApplyLeechSeedLink(*mRegistry, owner, hit, *def);
                 PokemonCombat::NoteAttacker(*mRegistry, owner, hit);

@@ -7,6 +7,30 @@
       "pitch": 1.0,
       "loop": false,
       "bus": "bus:/SFX"
+    },
+    {
+      "path": "Step",
+      "clip": "Audio/Clips/grass_step.wav",
+      "volume": 1.0,
+      "pitch": 1.0,
+      "loop": false,
+      "bus": "bus:/SFX"
+    },
+    {
+      "path": "RunPulse",
+      "clip": "Audio/Clips/grass_step.wav",
+      "volume": 1.0,
+      "pitch": 1.0,
+      "loop": false,
+      "bus": "bus:/SFX"
+    },
+    {
+      "path": "RunLand",
+      "clip": "Audio/Clips/grass_step.wav",
+      "volume": 1.0,
+      "pitch": 1.0,
+      "loop": false,
+      "bus": "bus:/SFX"
     }
   ]
 }

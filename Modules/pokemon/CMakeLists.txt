@@ -2,9 +2,13 @@ frigga_add_module(pokemon
   src/PokemonModule.cpp
   src/data/TypeChart.cpp
   src/data/PokemonCatalog.cpp
+  src/moves/MoveScript.cpp
+  src/moves/MoveScripts.cpp
   src/systems/PokemonStatsSystem.cpp
   src/systems/StaminaRegenSystem.cpp
   src/systems/StatusEffectSystem.cpp
+  src/systems/LeechSeedFxSystem.cpp
+  src/systems/LeechSeedRenderSystem.cpp
   src/systems/WildSpawnSystem.cpp
   src/systems/WildAISystem.cpp
   src/systems/MoveInputSystem.cpp

@@ -8,17 +8,20 @@
       "enabled": true,
       "systems": [
         "fg::PhysicsSystem",
+        "CharacterMovementSystem",
         "ThirdPersonCameraSystem",
         "PokemonStatsSystem",
         "StaminaRegenSystem",
         "StatusEffectSystem",
-        "CharacterMovementSystem",
+        "LeechSeedFxSystem",
+        "WildSpawnSystem",
+        "WildAISystem",
         "MoveInputSystem",
         "MoveCombatSystem",
         "ProjectileSystem",
         "ItemUseSystem",
-        "PlayerRespawnSystem",
-        "WildSpawnSystem"
+        "PokemonHudSystem",
+        "PlayerRespawnSystem"
       ]
     },
     {
@@ -26,17 +29,14 @@
       "hz": 0.0,
       "enabled": false,
       "systems": [
-        "fg::AudioSystem",
-        "PokemonHudSystem"
+        "fg::AudioSystem"
       ]
     },
     {
       "name": "AI",
       "hz": 59.999996185302734,
       "enabled": true,
-      "systems": [
-        "WildAISystem"
-      ]
+      "systems": []
     },
     {
       "name": "Timed",
@@ -58,7 +58,8 @@
       "enabled": true,
       "systems": [
         "fg::AnimationSystem",
-        "fg::RenderSystem"
+        "fg::RenderSystem",
+        "LeechSeedRenderSystem"
       ]
     }
   ]

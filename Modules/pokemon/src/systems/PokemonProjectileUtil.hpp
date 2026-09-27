@@ -111,6 +111,38 @@ namespace PokemonProjectileUtil
         return true;
     }
 
+    /// Resolves Models/seed.glb (first submesh) for Leech Seed visuals.
+    /// Returns false when the model is missing/unloaded so callers can fall back
+    /// to the primitive sphere + SeedMaterial.
+    [[nodiscard]] inline bool TryResolveSeed(fg::AssetRegistry *assets, std::uint32_t &outMeshId,
+                                             std::uint32_t &outMaterialId)
+    {
+        if(assets == nullptr)
+        {
+            return false;
+        }
+        const fg::ModelAsset *model = assets->FindModel("Models/seed.glb");
+        if(model == nullptr)
+        {
+            // First use: load from Resources/ so later spawns hit the cache.
+            if(auto loaded = assets->LoadModel("Models/seed.glb");
+               loaded && !loaded->submeshes.empty())
+            {
+                outMeshId     = loaded->submeshes[0].meshId;
+                outMaterialId = loaded->submeshes[0].materialId;
+                return outMeshId != 0;
+            }
+            return false;
+        }
+        if(model->submeshes.empty() || model->submeshes[0].meshId == 0)
+        {
+            return false;
+        }
+        outMeshId     = model->submeshes[0].meshId;
+        outMaterialId = model->submeshes[0].materialId;
+        return true;
+    }
+
     inline void SpawnForMove(fr::Registry &registry, fg::PrimitiveMeshFactory &primitives,
                              fg::AssetRegistry *assets, fr::Entity owner, const MoveDef &move,
                              const glm::vec3 &origin, const glm::vec3 &forwardFlat)
@@ -136,7 +168,25 @@ namespace PokemonProjectileUtil
             leafMat = fallbackLeafMat;
         }
 
-        const std::uint32_t seedMesh = fallbackMesh;
+        // Leech Seed flies as the authored Models/seed.glb; sphere fallback.
+        std::uint32_t seedMesh = 0;
+        std::uint32_t seedMatFinal = seedMat;
+        {
+            std::uint32_t seedModelMat = 0;
+            if(TryResolveSeed(assets, seedMesh, seedModelMat))
+            {
+                if(seedModelMat != 0)
+                {
+                    seedMatFinal = seedModelMat;
+                }
+            }
+            else
+            {
+                seedMesh = fallbackMesh;
+            }
+        }
+
+        const std::uint32_t seedMeshFinal = seedMesh;
         const float scale =
             move.projectileScale > 0.0f ? move.projectileScale : (leech ? 0.28f : 0.1f);
         const float speed =
@@ -197,8 +247,8 @@ namespace PokemonProjectileUtil
                 rot = baseRot * glm::angleAxis(spinAngle, spinAxis);
             }
 
-            const std::uint32_t meshId = leech ? seedMesh : leafMesh;
-            const std::uint32_t matId  = leech ? seedMat : leafMat;
+            const std::uint32_t meshId = leech ? seedMeshFinal : leafMesh;
+            const std::uint32_t matId  = leech ? seedMatFinal : leafMat;
 
             registry.CreateEntity(
                 fg::NameComponent {.name = leech ? "LeechSeed" : "RazorLeaf"},

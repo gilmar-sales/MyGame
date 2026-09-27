@@ -1,6 +1,8 @@
 #include "systems/PokemonStatsSystem.hpp"
 #include "systems/StaminaRegenSystem.hpp"
 #include "systems/StatusEffectSystem.hpp"
+#include "systems/LeechSeedFxSystem.hpp"
+#include "systems/LeechSeedRenderSystem.hpp"
 #include "systems/WildSpawnSystem.hpp"
 #include "systems/WildAISystem.hpp"
 #include "systems/MoveInputSystem.hpp"
@@ -10,7 +12,9 @@
 #include "systems/PokemonHudSystem.hpp"
 #include "systems/PlayerRespawnSystem.hpp"
 
+#include "components/MoveFxComponents.hpp"
 #include "components/PokemonComponents.hpp"
+#include "moves/MoveScript.hpp"
 #include "data/WildTypes.hpp"
 
 #include <Frigga/Module/FriModule.hpp>
@@ -180,6 +184,7 @@ namespace
 
 FRI_MODULE(module)
 {
+    RegisterCoreMoveScripts();
     module.Component<PokemonIdentity>("PokemonIdentity", "Pokemon Identity", DrawIdentity)
           .Component<PokemonIVs>("PokemonIVs", "Pokemon IVs", DrawIVs)
           .Component<PokemonStats>("PokemonStats", "Pokemon Stats", DrawStats)
@@ -190,6 +195,8 @@ FRI_MODULE(module)
           .Component<PokemonCombatState>("PokemonCombatState", "Pokemon Combat State")
           .Component<PokemonStatus>("PokemonStatus", "Pokemon Status")
           .Component<PokemonProjectile>("PokemonProjectile", "Pokemon Projectile")
+          .Component<LeechSeedAnchor>("LeechSeedAnchor", "Leech Seed Anchor")
+          .Component<LeechDrainOrb>("Leech Drain Orb", "Leech Drain Orb")
           .Component<PokemonTeam>("PokemonTeam", "Pokemon Team", DrawTeam)
           .Component<PlayerTag>("PlayerTag", "Player Tag", DrawPlayerTag)
           .Component<WildPokemonAI>("WildPokemonAI", "Wild Pokemon AI")
@@ -198,6 +205,7 @@ FRI_MODULE(module)
           .System<PokemonStatsSystem>()
           .System<StaminaRegenSystem>()
           .System<StatusEffectSystem>()
+          .System<LeechSeedFxSystem>()
           .System<WildSpawnSystem>()
           .System<WildAISystem>()
           .System<MoveInputSystem>()
@@ -205,5 +213,6 @@ FRI_MODULE(module)
           .System<ProjectileSystem>()
           .System<ItemUseSystem>()
           .System<PokemonHudSystem>("Render")
+          .System<LeechSeedRenderSystem>("Render")
           .System<PlayerRespawnSystem>();
 }
