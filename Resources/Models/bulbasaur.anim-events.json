@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "events": {
+    "model_skeleton|001fight_b": [{"name":"ThrowLeafs","time":0.4942748}],
+    "model_skeleton|001fight_d": [{"name":"LaunchSeed","time":0.8901166}],
+    "model_skeleton|001run": [{"name":"BackStep","time":0.017778225}, {"name":"FrontLand","time":0.30117518}],
+    "model_skeleton|001walk": [{"name":"LeftStep","time":0.34779695}, {"name":"RightStep","time":0.75371635}, {"name":"LeftStep2","time":1.0832329}]
+  }
+}

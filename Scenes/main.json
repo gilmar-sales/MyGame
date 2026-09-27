@@ -3,9 +3,9 @@
   "editorCamera": {
     "transform": {
       "position": [
-        2.6999239921569824,
-        2.271843671798706,
-        2.2116193771362305
+        -4.020556449890137,
+        3.7979278564453125,
+        6.285877704620361
       ],
       "scale": [
         1.0,
@@ -13,13 +13,13 @@
         1.0
       ],
       "rotation": [
-        0.6222337484359741,
-        -0.21327222883701324,
-        0.7125281095504761,
-        0.2442208230495453
+        0.9202895760536194,
+        -0.18789273500442505,
+        -0.3362305462360382,
+        -0.06864716857671738
       ]
     },
-    "fovDegrees": 56.464412689208984,
+    "fovDegrees": 57.050662994384766,
     "nearPlane": 0.10000000149011612,
     "farPlane": 1000.0
   },
@@ -1000,185 +1000,6 @@
       "childOf": null
     },
     {
-      "name": "Main Camera",
-      "transform": {
-        "position": [
-          4.0,
-          3.0,
-          4.0
-        ],
-        "scale": [
-          1.0,
-          1.0,
-          1.0
-        ],
-        "rotation": [
-          0.8965564966201782,
-          -0.2230244129896164,
-          0.37136587500572205,
-          0.09237972646951675
-        ]
-      },
-      "mesh": null,
-      "material": null,
-      "camera": {
-        "fovDegrees": 50.0,
-        "nearPlane": 0.10000000149011612,
-        "farPlane": 1000.0,
-        "primary": true,
-        "locked": true
-      },
-      "light": null,
-      "rigidBody": null,
-      "animator": null,
-      "audioSource": null,
-      "audioListener": null,
-      "billboard": null,
-      "particles": null,
-      "healthBar": null,
-      "billboardText": null,
-      "postProcess": null,
-      "userComponents": [
-        {
-          "typeId": "ThirdPersonCameraComponent",
-          "properties": [
-            {
-              "name": "target",
-              "kind": "Entity",
-              "boolValue": null,
-              "intValue": 12,
-              "floatValue": null,
-              "stringValue": null,
-              "vec": null
-            },
-            {
-              "name": "pivotOffset",
-              "kind": "Vec3",
-              "boolValue": null,
-              "intValue": null,
-              "floatValue": null,
-              "stringValue": null,
-              "vec": [
-                0.0,
-                1.399999976158142,
-                0.0
-              ]
-            },
-            {
-              "name": "distance",
-              "kind": "Float",
-              "boolValue": null,
-              "intValue": null,
-              "floatValue": 6.0,
-              "stringValue": null,
-              "vec": null
-            },
-            {
-              "name": "minDistance",
-              "kind": "Float",
-              "boolValue": null,
-              "intValue": null,
-              "floatValue": 1.5,
-              "stringValue": null,
-              "vec": null
-            },
-            {
-              "name": "maxDistance",
-              "kind": "Float",
-              "boolValue": null,
-              "intValue": null,
-              "floatValue": 14.0,
-              "stringValue": null,
-              "vec": null
-            },
-            {
-              "name": "yaw",
-              "kind": "Float",
-              "boolValue": null,
-              "intValue": null,
-              "floatValue": 0.0,
-              "stringValue": null,
-              "vec": null
-            },
-            {
-              "name": "pitch",
-              "kind": "Float",
-              "boolValue": null,
-              "intValue": null,
-              "floatValue": 18.0,
-              "stringValue": null,
-              "vec": null
-            },
-            {
-              "name": "minPitch",
-              "kind": "Float",
-              "boolValue": null,
-              "intValue": null,
-              "floatValue": -35.0,
-              "stringValue": null,
-              "vec": null
-            },
-            {
-              "name": "maxPitch",
-              "kind": "Float",
-              "boolValue": null,
-              "intValue": null,
-              "floatValue": 70.0,
-              "stringValue": null,
-              "vec": null
-            },
-            {
-              "name": "collisionRadius",
-              "kind": "Float",
-              "boolValue": null,
-              "intValue": null,
-              "floatValue": 0.25,
-              "stringValue": null,
-              "vec": null
-            },
-            {
-              "name": "collideWithWorld",
-              "kind": "Bool",
-              "boolValue": true,
-              "intValue": null,
-              "floatValue": null,
-              "stringValue": null,
-              "vec": null
-            },
-            {
-              "name": "lookXAxis",
-              "kind": "String",
-              "boolValue": null,
-              "intValue": null,
-              "floatValue": null,
-              "stringValue": "LookX",
-              "vec": null
-            },
-            {
-              "name": "lookYAxis",
-              "kind": "String",
-              "boolValue": null,
-              "intValue": null,
-              "floatValue": null,
-              "stringValue": "LookY",
-              "vec": null
-            },
-            {
-              "name": "zoomAxis",
-              "kind": "String",
-              "boolValue": null,
-              "intValue": null,
-              "floatValue": null,
-              "stringValue": "Zoom",
-              "vec": null
-            }
-          ]
-        }
-      ],
-      "prefabSource": null,
-      "childOf": null
-    },
-    {
       "name": "TrainingDummy",
       "transform": {
         "position": [
@@ -1259,7 +1080,7 @@
       "billboard": null,
       "particles": null,
       "healthBar": {
-        "fill": 0.0,
+        "fill": 1.0,
         "width": 0.8500000238418579,
         "height": 0.07999999821186066,
         "offset": [
@@ -2103,7 +1924,25 @@
           0.0
         ]
       },
-      "animator": null,
+      "animator": {
+        "modelSource": "Models/bulbasaur.glb",
+        "clipName": "model_skeleton|001run",
+        "timeSec": 0.375,
+        "speed": 1.0,
+        "playing": false,
+        "loop": true,
+        "useGpu": false,
+        "previewInEdit": false,
+        "useAnimGraph": false,
+        "footstepEventPath": "",
+        "routeClipEvents": true,
+        "animGraph": {
+          "entry": "",
+          "params": [],
+          "states": [],
+          "transitions": []
+        }
+      },
       "audioSource": null,
       "audioListener": null,
       "billboard": null,
@@ -2421,7 +2260,7 @@
               "boolValue": null,
               "intValue": null,
               "floatValue": null,
-              "stringValue": "leech_seed",
+              "stringValue": "solar_beam",
               "vec": null
             },
             {
@@ -2758,25 +2597,7 @@
       "camera": null,
       "light": null,
       "rigidBody": null,
-      "animator": {
-        "modelSource": "Models/bulbasaur.glb",
-        "clipName": "model_skeleton|001aidle",
-        "timeSec": 0.0,
-        "speed": 1.0,
-        "playing": true,
-        "loop": true,
-        "useGpu": false,
-        "previewInEdit": false,
-        "useAnimGraph": false,
-        "footstepEventPath": "",
-        "routeClipEvents": true,
-        "animGraph": {
-          "entry": "",
-          "params": [],
-          "states": [],
-          "transitions": []
-        }
-      },
+      "animator": null,
       "audioSource": null,
       "audioListener": null,
       "billboard": null,
@@ -2786,7 +2607,7 @@
       "postProcess": null,
       "userComponents": null,
       "prefabSource": "Prefabs/Bulbasaur.prefab",
-      "childOf": 12
+      "childOf": 11
     },
     {
       "name": "Eyes",
@@ -2861,7 +2682,7 @@
       "postProcess": null,
       "userComponents": null,
       "prefabSource": null,
-      "childOf": 13
+      "childOf": 12
     },
     {
       "name": "Bulb",
@@ -2936,7 +2757,7 @@
       "postProcess": null,
       "userComponents": null,
       "prefabSource": null,
-      "childOf": 13
+      "childOf": 12
     },
     {
       "name": "Body",
@@ -3011,7 +2832,7 @@
       "postProcess": null,
       "userComponents": null,
       "prefabSource": null,
-      "childOf": 13
+      "childOf": 12
     },
     {
       "name": "Name",
@@ -3072,7 +2893,7 @@
       "postProcess": null,
       "userComponents": null,
       "prefabSource": null,
-      "childOf": 12
+      "childOf": 11
     },
     {
       "name": "Health",
@@ -3131,7 +2952,188 @@
       "postProcess": null,
       "userComponents": null,
       "prefabSource": null,
-      "childOf": 12
+      "childOf": 11
+    },
+    {
+      "name": "Main Camera",
+      "transform": {
+        "position": [
+          4.0,
+          3.0,
+          4.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "rotation": [
+          0.8965564966201782,
+          -0.2230244129896164,
+          0.37136587500572205,
+          0.09237972646951675
+        ]
+      },
+      "mesh": null,
+      "material": null,
+      "camera": {
+        "fovDegrees": 50.0,
+        "nearPlane": 0.10000000149011612,
+        "farPlane": 1000.0,
+        "primary": true,
+        "locked": true
+      },
+      "light": null,
+      "rigidBody": null,
+      "animator": null,
+      "audioSource": null,
+      "audioListener": {
+        "active": true
+      },
+      "billboard": null,
+      "particles": null,
+      "healthBar": null,
+      "billboardText": null,
+      "postProcess": null,
+      "userComponents": [
+        {
+          "typeId": "ThirdPersonCameraComponent",
+          "properties": [
+            {
+              "name": "target",
+              "kind": "Entity",
+              "boolValue": null,
+              "intValue": 11,
+              "floatValue": null,
+              "stringValue": null,
+              "vec": null
+            },
+            {
+              "name": "pivotOffset",
+              "kind": "Vec3",
+              "boolValue": null,
+              "intValue": null,
+              "floatValue": null,
+              "stringValue": null,
+              "vec": [
+                0.0,
+                1.399999976158142,
+                0.0
+              ]
+            },
+            {
+              "name": "distance",
+              "kind": "Float",
+              "boolValue": null,
+              "intValue": null,
+              "floatValue": 6.0,
+              "stringValue": null,
+              "vec": null
+            },
+            {
+              "name": "minDistance",
+              "kind": "Float",
+              "boolValue": null,
+              "intValue": null,
+              "floatValue": 1.5,
+              "stringValue": null,
+              "vec": null
+            },
+            {
+              "name": "maxDistance",
+              "kind": "Float",
+              "boolValue": null,
+              "intValue": null,
+              "floatValue": 14.0,
+              "stringValue": null,
+              "vec": null
+            },
+            {
+              "name": "yaw",
+              "kind": "Float",
+              "boolValue": null,
+              "intValue": null,
+              "floatValue": 0.0,
+              "stringValue": null,
+              "vec": null
+            },
+            {
+              "name": "pitch",
+              "kind": "Float",
+              "boolValue": null,
+              "intValue": null,
+              "floatValue": 18.0,
+              "stringValue": null,
+              "vec": null
+            },
+            {
+              "name": "minPitch",
+              "kind": "Float",
+              "boolValue": null,
+              "intValue": null,
+              "floatValue": -35.0,
+              "stringValue": null,
+              "vec": null
+            },
+            {
+              "name": "maxPitch",
+              "kind": "Float",
+              "boolValue": null,
+              "intValue": null,
+              "floatValue": 70.0,
+              "stringValue": null,
+              "vec": null
+            },
+            {
+              "name": "collisionRadius",
+              "kind": "Float",
+              "boolValue": null,
+              "intValue": null,
+              "floatValue": 0.25,
+              "stringValue": null,
+              "vec": null
+            },
+            {
+              "name": "collideWithWorld",
+              "kind": "Bool",
+              "boolValue": true,
+              "intValue": null,
+              "floatValue": null,
+              "stringValue": null,
+              "vec": null
+            },
+            {
+              "name": "lookXAxis",
+              "kind": "String",
+              "boolValue": null,
+              "intValue": null,
+              "floatValue": null,
+              "stringValue": "LookX",
+              "vec": null
+            },
+            {
+              "name": "lookYAxis",
+              "kind": "String",
+              "boolValue": null,
+              "intValue": null,
+              "floatValue": null,
+              "stringValue": "LookY",
+              "vec": null
+            },
+            {
+              "name": "zoomAxis",
+              "kind": "String",
+              "boolValue": null,
+              "intValue": null,
+              "floatValue": null,
+              "stringValue": "Zoom",
+              "vec": null
+            }
+          ]
+        }
+      ],
+      "prefabSource": null,
+      "childOf": null
     }
   ]
 }
