@@ -127,6 +127,12 @@ struct PokemonProjectile: fr::Component
     /// 0 = razor leaf flake, 1 = leech seed orb
     std::int64_t kind        = 0;
     bool         consumed    = false;
+    /// Spin (razor leaf): axis + speed (rad/s) + current angle.
+    float spinAxisX = 0.0f;
+    float spinAxisY = 1.0f;
+    float spinAxisZ = 0.0f;
+    float spinSpeed = 0.0f;
+    float spinAngle = 0.0f;
 };
 
 /// 0 = player, 1 = wild (same-team entities do not target each other).

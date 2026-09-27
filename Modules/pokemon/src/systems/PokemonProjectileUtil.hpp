@@ -5,6 +5,7 @@
 #include "data/PokemonCatalog.hpp"
 #include "systems/PokemonCombatUtil.hpp"
 
+#include <Frigga/Asset/AssetRegistry.hpp>
 #include <Frigga/Asset/PrimitiveMeshFactory.hpp>
 #include <Frigga/ECS/Components/MaterialComponent.hpp>
 #include <Frigga/ECS/Components/MeshComponent.hpp>
@@ -80,16 +81,62 @@ namespace PokemonProjectileUtil
         return glm::normalize(forward + right * dist(rng) + bilat * dist(rng));
     }
 
+    [[nodiscard]] inline bool TryResolveRazorLeaf(fg::AssetRegistry *assets,
+                                                   std::uint32_t &outMeshId,
+                                                   std::uint32_t &outMaterialId)
+    {
+        if(assets == nullptr)
+        {
+            return false;
+        }
+        const fg::ModelAsset *model = assets->FindModel("Models/razor_leaf.glb");
+        if(model == nullptr)
+        {
+            // First use: load from Resources/ so later spawns hit the cache.
+            if(auto loaded = assets->LoadModel("Models/razor_leaf.glb");
+               loaded && !loaded->submeshes.empty())
+            {
+                outMeshId     = loaded->submeshes[0].meshId;
+                outMaterialId = loaded->submeshes[0].materialId;
+                return outMeshId != 0;
+            }
+            return false;
+        }
+        if(model->submeshes.empty() || model->submeshes[0].meshId == 0)
+        {
+            return false;
+        }
+        outMeshId     = model->submeshes[0].meshId;
+        outMaterialId = model->submeshes[0].materialId;
+        return true;
+    }
+
     inline void SpawnForMove(fr::Registry &registry, fg::PrimitiveMeshFactory &primitives,
-                             fr::Entity owner, const MoveDef &move, const glm::vec3 &origin,
-                             const glm::vec3 &forwardFlat)
+                             fg::AssetRegistry *assets, fr::Entity owner, const MoveDef &move,
+                             const glm::vec3 &origin, const glm::vec3 &forwardFlat)
     {
         const int count = std::max(1, move.projectileCount);
         const bool leech =
             move.delivery == MoveDelivery::StatusRanged || move.id == "leech_seed";
-        const std::uint32_t meshId = primitives.GetMesh(fg::PrimitiveType::Sphere);
-        const std::uint32_t matId =
-            leech ? SeedMaterial(primitives) : LeafMaterial(primitives);
+        const std::uint32_t fallbackMesh = primitives.GetMesh(fg::PrimitiveType::Sphere);
+        const std::uint32_t fallbackLeafMat = LeafMaterial(primitives);
+        const std::uint32_t seedMat         = SeedMaterial(primitives);
+
+        std::uint32_t leafMesh = 0;
+        std::uint32_t leafMat  = 0;
+        const bool useLeafPrefab =
+            !leech && TryResolveRazorLeaf(assets, leafMesh, leafMat);
+        if(!useLeafPrefab)
+        {
+            leafMesh = fallbackMesh;
+            leafMat  = fallbackLeafMat;
+        }
+        else if(leafMat == 0)
+        {
+            leafMat = fallbackLeafMat;
+        }
+
+        const std::uint32_t seedMesh = fallbackMesh;
         const float scale =
             move.projectileScale > 0.0f ? move.projectileScale : (leech ? 0.28f : 0.1f);
         const float speed =
@@ -125,15 +172,40 @@ namespace PokemonProjectileUtil
                 pos += glm::vec3 {jitter(rng), jitter(rng) * 0.5f, jitter(rng)};
             }
 
-            const glm::quat rot =
+            const glm::quat baseRot =
                 glm::quatLookAt(-dir, glm::vec3 {0.0f, 1.0f, 0.0f});
+
+            // Razor leaves spin in flight; seeds keep a stable facing.
+            glm::vec3 spinAxis {0.0f, 1.0f, 0.0f};
+            float     spinSpeed = 0.0f;
+            float     spinAngle = 0.0f;
+            glm::quat rot       = baseRot;
+            if(!leech)
+            {
+                thread_local std::mt19937 rng {std::random_device {}()};
+                std::uniform_real_distribution<float> axisDist(-1.0f, 1.0f);
+                std::uniform_real_distribution<float> speedDist(9.0f, 18.0f);
+                std::uniform_real_distribution<float> angleDist(0.0f, 6.2831853f);
+                glm::vec3 axis {axisDist(rng), axisDist(rng), axisDist(rng)};
+                if(glm::dot(axis, axis) < 1e-4f)
+                {
+                    axis = glm::vec3 {0.0f, 1.0f, 0.0f};
+                }
+                spinAxis  = glm::normalize(axis);
+                spinSpeed = speedDist(rng);
+                spinAngle = angleDist(rng);
+                rot = baseRot * glm::angleAxis(spinAngle, spinAxis);
+            }
+
+            const std::uint32_t meshId = leech ? seedMesh : leafMesh;
+            const std::uint32_t matId  = leech ? seedMat : leafMat;
 
             registry.CreateEntity(
                 fg::NameComponent {.name = leech ? "LeechSeed" : "RazorLeaf"},
                 fg::TransformComponent {.position = pos,
                                         .scale    = {scale, scale, scale},
                                         .rotation = rot},
-                fg::MeshComponent {.meshId = meshId, .castShadows = false},
+                fg::MeshComponent {.meshId = meshId, .castShadows = !leech},
                 fg::MaterialComponent {.materialId = matId},
                 PokemonProjectile {.owner       = static_cast<std::int64_t>(owner),
                                    .moveId      = std::string(move.id),
@@ -144,7 +216,20 @@ namespace PokemonProjectileUtil
                                    .radius      = radius,
                                    .damageScale = damageScale,
                                    .kind        = kind,
-                                   .consumed    = false});
+                                   .consumed    = false,
+                                   .spinAxisX   = spinAxis.x,
+                                   .spinAxisY   = spinAxis.y,
+                                   .spinAxisZ   = spinAxis.z,
+                                   .spinSpeed   = spinSpeed,
+                                   .spinAngle   = spinAngle});
         }
+    }
+
+    // Back-compat for callers without an AssetRegistry (falls back to spheres).
+    inline void SpawnForMove(fr::Registry &registry, fg::PrimitiveMeshFactory &primitives,
+                             fr::Entity owner, const MoveDef &move, const glm::vec3 &origin,
+                             const glm::vec3 &forwardFlat)
+    {
+        SpawnForMove(registry, primitives, nullptr, owner, move, origin, forwardFlat);
     }
 } // namespace PokemonProjectileUtil

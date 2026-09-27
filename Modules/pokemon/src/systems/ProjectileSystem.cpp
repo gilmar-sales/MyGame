@@ -7,6 +7,8 @@
 #include <Frigga/ECS/Components/TransformComponent.hpp>
 #include <Frigga/ECS/TransformUtil.hpp>
 
+#include <glm/gtc/quaternion.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <utility>
@@ -67,8 +69,26 @@ void ProjectileSystem::Update(float deltaTime)
             const glm::vec3 oldPos   = transform.position;
             const glm::vec3 newPos   = oldPos + vel * deltaTime;
             transform.position       = newPos;
-            transform.rotation =
+            const glm::quat baseRot =
                 glm::quatLookAt(-dir, glm::vec3 {0.0f, 1.0f, 0.0f});
+            if(proj.kind == 0 && std::abs(proj.spinSpeed) > 1e-4f)
+            {
+                proj.spinAngle += proj.spinSpeed * deltaTime;
+                glm::vec3 axis {proj.spinAxisX, proj.spinAxisY, proj.spinAxisZ};
+                if(glm::dot(axis, axis) < 1e-6f)
+                {
+                    axis = glm::vec3 {0.0f, 1.0f, 0.0f};
+                }
+                else
+                {
+                    axis = glm::normalize(axis);
+                }
+                transform.rotation = baseRot * glm::angleAxis(proj.spinAngle, axis);
+            }
+            else
+            {
+                transform.rotation = baseRot;
+            }
             moved.push_back(entity);
 
             const auto owner = static_cast<fr::Entity>(proj.owner);

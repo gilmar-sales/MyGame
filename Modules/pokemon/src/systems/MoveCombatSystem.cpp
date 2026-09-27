@@ -15,8 +15,10 @@
 MoveCombatSystem::MoveCombatSystem(const skr::Arc<fr::Registry> &registry,
                                    const skr::Arc<fg::Physics> &physics,
                                    const skr::Arc<fg::AnimationController> &animation,
-                                   const skr::Arc<fg::PrimitiveMeshFactory> &primitives)
-    : fr::System(registry), mPhysics(physics), mAnimation(animation), mPrimitives(primitives)
+                                   const skr::Arc<fg::PrimitiveMeshFactory> &primitives,
+                                   const skr::Arc<fg::AssetRegistry> &assets)
+    : fr::System(registry), mPhysics(physics), mAnimation(animation), mPrimitives(primitives),
+      mAssets(assets)
 {
 }
 
@@ -280,8 +282,8 @@ void MoveCombatSystem::Update(float deltaTime)
     {
         if(spawn.def != nullptr)
         {
-            PokemonProjectileUtil::SpawnForMove(*mRegistry, *mPrimitives, spawn.owner, *spawn.def,
-                                                spawn.origin, spawn.forward);
+            PokemonProjectileUtil::SpawnForMove(*mRegistry, *mPrimitives, mAssets.get(), spawn.owner,
+                                                *spawn.def, spawn.origin, spawn.forward);
         }
     }
 }

@@ -3,6 +3,7 @@
   "assets": [
     {"path":"Fonts/OpenSans.ttf","type":"font","guid":"asset-8b9e83a650e9f446","sourceSize":529640,"sourceHash":6901592178515771063,"sourceTimestamp":-4647834193000000000,"settings":"","dependencies":[]},
     {"path":"Models/bulbasaur.glb","type":"model","guid":"asset-ba8897a7fa890e45","sourceSize":728812,"sourceHash":5846715544560772344,"sourceTimestamp":-4647834193000000000,"settings":"","dependencies":[]},
+    {"path":"Models/razor_leaf.glb","type":"model","guid":"asset-e0123a4f7cd5979f","sourceSize":6224,"sourceHash":6245008740290811898,"sourceTimestamp":-4647155663000000000,"settings":"","dependencies":[]},
     {"path":"Textures/bodyA.png","type":"texture","guid":"asset-023ab5fae5e78623","sourceSize":2430863,"sourceHash":16493769644867122562,"sourceTimestamp":-4647834193000000000,"settings":"","dependencies":[]},
     {"path":"Textures/bodyB.png","type":"texture","guid":"asset-e01dc407b5ec7e76","sourceSize":1169772,"sourceHash":14851389075295916659,"sourceTimestamp":-4647834193000000000,"settings":"","dependencies":[]},
     {"path":"Textures/eye.png","type":"texture","guid":"asset-59cfe3ebcda20a75","sourceSize":1166415,"sourceHash":11187031422168548464,"sourceTimestamp":-4647834193000000000,"settings":"","dependencies":[]}
