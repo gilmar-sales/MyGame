@@ -18,7 +18,7 @@ The `publish` section of `frigga.project` controls the executable identity: `dis
 
 ## Project components
 
-1. Declare `struct Foo : fr::Component { float x; };`
+1. Declare `struct Foo  { float x; };`
 2. In `FRI_MODULE`: `module.Component<Foo>()`
 3. Build + **Reload Gameplay Module**.
 4. In the Editor: Entity → Add Component → Gameplay → Foo.

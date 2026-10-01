@@ -3,7 +3,7 @@
   "assets": [
     {"path":"Audio/Banks/example.audiobank.json","type":"audio-bank","guid":"asset-96456aa4dabd9227","sourceSize":699,"sourceHash":8829664614525874848,"sourceTimestamp":-4647115846000000000,"settings":"","dependencies":[]},
     {"path":"Audio/Clips/example.wav","type":"audio-clip","guid":"asset-d1b6e592975d13af","sourceSize":30912,"sourceHash":3285417590212250211,"sourceTimestamp":-4647834193000000000,"settings":"","dependencies":[]},
-    {"path":"Audio/Clips/grass_step.ogg","type":"audio-clip","guid":"asset-f9b6ba976cf1226f","sourceSize":7344,"sourceHash":13865138678832065307,"sourceTimestamp":-4647120898000000000,"settings":"","dependencies":[]},
+    {"path":"Audio/Clips/grass_step.wav","type":"audio-clip","guid":"asset-f9b6ba976cf1226f","sourceSize":7344,"sourceHash":13865138678832065307,"sourceTimestamp":-4647120898000000000,"settings":"","dependencies":[]},
     {"path":"Fonts/OpenSans.ttf","type":"font","guid":"asset-8b9e83a650e9f446","sourceSize":529640,"sourceHash":6901592178515771063,"sourceTimestamp":-4647834193000000000,"settings":"","dependencies":[]},
     {"path":"Models/bulbasaur.glb","type":"model","guid":"asset-ba8897a7fa890e45","sourceSize":728812,"sourceHash":5846715544560772344,"sourceTimestamp":-4647834193000000000,"settings":"","dependencies":[]},
     {"path":"Models/razor_leaf.glb","type":"model","guid":"asset-e0123a4f7cd5979f","sourceSize":21384,"sourceHash":16212128483141667525,"sourceTimestamp":-4647154823000000000,"settings":"","dependencies":[]},

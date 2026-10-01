@@ -10,7 +10,7 @@
 #include <string>
 
 // Runtime VFX for scripted moves (Leech Seed anchor + drain orbs, ...)
-struct LeechSeedAnchor: fr::Component
+struct LeechSeedAnchor
 {
     std::int64_t target = -1;
     std::int64_t source = -1;
@@ -21,7 +21,7 @@ struct LeechSeedAnchor: fr::Component
 
 /// Transient homing orb: flies victim -> caster, purely visual.
 /// Damage/heal is applied by the DoT owner (StatusEffectSystem); this only shows it.
-struct LeechDrainOrb: fr::Component
+struct LeechDrainOrb
 {
     std::int64_t caster = -1;
     std::int64_t victim = -1;

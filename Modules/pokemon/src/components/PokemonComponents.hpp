@@ -6,14 +6,14 @@
 #include <cstdint>
 #include <string>
 
-struct PokemonIdentity: fr::Component
+struct PokemonIdentity
 {
     std::string speciesId = "bulbasaur";
     std::string nickname;
     std::int64_t level = 10;
 };
 
-struct PokemonIVs: fr::Component
+struct PokemonIVs
 {
     std::int64_t hp        = 15;
     std::int64_t attack    = 15;
@@ -23,7 +23,7 @@ struct PokemonIVs: fr::Component
     std::int64_t speed     = 15;
 };
 
-struct PokemonStats: fr::Component
+struct PokemonStats
 {
     std::int64_t hp        = 0;
     std::int64_t attack    = 0;
@@ -35,14 +35,14 @@ struct PokemonStats: fr::Component
     bool dirty = true;
 };
 
-struct PokemonTypes: fr::Component
+struct PokemonTypes
 {
     /// See ElementType (Grass=3, Poison=7, Fire=1, Water=2, None=-1).
     std::int64_t primary   = 3;
     std::int64_t secondary = 7;
 };
 
-struct PokemonVitals: fr::Component
+struct PokemonVitals
 {
     float hp                 = 0.0f;
     float maxHp              = 0.0f;
@@ -53,7 +53,7 @@ struct PokemonVitals: fr::Component
     bool  knockedOut         = false;
 };
 
-struct PokemonMoveset: fr::Component
+struct PokemonMoveset
 {
     std::string move0 = "tackle";
     std::string move1 = "headbutt";
@@ -65,7 +65,7 @@ struct PokemonMoveset: fr::Component
     float       cd3   = 0.0f;
 };
 
-struct PokemonInventory: fr::Component
+struct PokemonInventory
 {
     std::int64_t potions        = 3;
     std::int64_t oranBerries    = 2;
@@ -73,7 +73,7 @@ struct PokemonInventory: fr::Component
 };
 
 /// phase: 0 idle, 1 charging, 2 recovering, 3 lunging, 4 recoiling
-struct PokemonCombatState: fr::Component
+struct PokemonCombatState
 {
     std::int64_t phase       = 0;
     std::string  activeMove;
@@ -95,7 +95,7 @@ struct PokemonCombatState: fr::Component
     float        koRespawnTimer = 0.0f;
 };
 
-struct PokemonStatus: fr::Component
+struct PokemonStatus
 {
     bool         leechSeeded     = false;
     float        leechSeedTimer  = 0.0f;
@@ -114,7 +114,7 @@ struct PokemonStatus: fr::Component
 };
 
 /// Runtime damaging / status orbs (razor leaf flakes, leech seed).
-struct PokemonProjectile: fr::Component
+struct PokemonProjectile
 {
     std::int64_t owner       = -1;
     std::string  moveId;
@@ -136,19 +136,19 @@ struct PokemonProjectile: fr::Component
 };
 
 /// 0 = player, 1 = wild (same-team entities do not target each other).
-struct PokemonTeam: fr::Component
+struct PokemonTeam
 {
     std::int64_t team = 0;
 };
 
 /// Marks the unique controllable player entity (WildAI and future systems).
-struct PlayerTag: fr::Component
+struct PlayerTag
 {
 };
 
 /// Personality: 0 aggressive, 1 peaceful, 2 skittish, 3 cowardly
 /// AI state: 0 passive, 1 combat, 2 fleeing, 3 fainted
-struct WildPokemonAI: fr::Component
+struct WildPokemonAI
 {
     std::int64_t spawnArea   = -1;
     std::int64_t personality = 1;
@@ -173,7 +173,7 @@ struct WildPokemonAI: fr::Component
     float        faceDirZ = 0.0f;
 };
 
-struct WildSpawnArea: fr::Component
+struct WildSpawnArea
 {
     std::string  speciesId         = "bulbasaur";
     /// 0 aggressive, 1 peaceful, 2 skittish, 3 cowardly
@@ -192,7 +192,7 @@ struct WildSpawnArea: fr::Component
     std::int64_t liveCount         = 0;
 };
 
-struct WildEscapeArea: fr::Component
+struct WildEscapeArea
 {
     float radius = 3.0f;
 };

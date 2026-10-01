@@ -6,7 +6,7 @@
 
 #include <string>
 
-struct ThirdPersonCameraComponent: fr::Component
+struct ThirdPersonCameraComponent
 {
     fg::EntityRef target {};
     glm::vec3     pivotOffset {0.0f, 1.4f, 0.0f};

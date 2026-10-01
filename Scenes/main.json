@@ -1138,7 +1138,7 @@
               "boolValue": null,
               "intValue": null,
               "floatValue": null,
-              "stringValue": "training_dummy",
+              "stringValue": "",
               "vec": null
             },
             {
@@ -1147,7 +1147,7 @@
               "boolValue": null,
               "intValue": null,
               "floatValue": null,
-              "stringValue": "Dummy",
+              "stringValue": "",
               "vec": null
             },
             {
@@ -1168,7 +1168,7 @@
               "name": "hp",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 31,
+              "intValue": 15,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -1177,7 +1177,7 @@
               "name": "attack",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 18,
+              "intValue": 15,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -1186,7 +1186,7 @@
               "name": "defense",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 16,
+              "intValue": 15,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -1195,7 +1195,7 @@
               "name": "spAttack",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 22,
+              "intValue": 15,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -1204,7 +1204,7 @@
               "name": "spDefense",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 20,
+              "intValue": 15,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -1295,7 +1295,7 @@
               "name": "primary",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 1,
+              "intValue": 3,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -1304,7 +1304,7 @@
               "name": "secondary",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": -1,
+              "intValue": 7,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -1337,7 +1337,7 @@
               "kind": "Float",
               "boolValue": null,
               "intValue": null,
-              "floatValue": 0.0,
+              "floatValue": 96.99968719482422,
               "stringValue": null,
               "vec": null
             },
@@ -1388,7 +1388,7 @@
               "boolValue": null,
               "intValue": null,
               "floatValue": null,
-              "stringValue": "tackle",
+              "stringValue": "",
               "vec": null
             },
             {
@@ -1397,7 +1397,7 @@
               "boolValue": null,
               "intValue": null,
               "floatValue": null,
-              "stringValue": "tackle",
+              "stringValue": "",
               "vec": null
             },
             {
@@ -1406,7 +1406,7 @@
               "boolValue": null,
               "intValue": null,
               "floatValue": null,
-              "stringValue": "tackle",
+              "stringValue": "",
               "vec": null
             },
             {
@@ -1415,7 +1415,7 @@
               "boolValue": null,
               "intValue": null,
               "floatValue": null,
-              "stringValue": "tackle",
+              "stringValue": "",
               "vec": null
             },
             {
@@ -1463,7 +1463,7 @@
               "name": "potions",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 0,
+              "intValue": 3,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -1472,7 +1472,7 @@
               "name": "oranBerries",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 0,
+              "intValue": 2,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -1481,7 +1481,7 @@
               "name": "staminaBerries",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 0,
+              "intValue": 3,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -2173,7 +2173,7 @@
               "boolValue": null,
               "intValue": null,
               "floatValue": null,
-              "stringValue": "bulbasaur",
+              "stringValue": "",
               "vec": null
             },
             {
@@ -2182,14 +2182,14 @@
               "boolValue": null,
               "intValue": null,
               "floatValue": null,
-              "stringValue": "Bulbasaur",
+              "stringValue": "",
               "vec": null
             },
             {
               "name": "level",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 12,
+              "intValue": 10,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -2203,7 +2203,7 @@
               "name": "hp",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 20,
+              "intValue": 15,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -2212,7 +2212,7 @@
               "name": "attack",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 18,
+              "intValue": 15,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -2221,7 +2221,7 @@
               "name": "defense",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 16,
+              "intValue": 15,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -2230,7 +2230,7 @@
               "name": "spAttack",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 22,
+              "intValue": 15,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -2239,7 +2239,7 @@
               "name": "spDefense",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 20,
+              "intValue": 15,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -2372,7 +2372,7 @@
               "kind": "Float",
               "boolValue": null,
               "intValue": null,
-              "floatValue": 0.0,
+              "floatValue": 96.99968719482422,
               "stringValue": null,
               "vec": null
             },
