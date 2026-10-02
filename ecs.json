@@ -3,28 +3,6 @@
   "defaultPipeline": "Simulation",
   "pipelines": [
     {
-      "name": "Simulation",
-      "hz": 60.0,
-      "enabled": true,
-      "systems": [
-        "fg::PhysicsSystem",
-        "CharacterMovementSystem",
-        "ThirdPersonCameraSystem",
-        "PokemonStatsSystem",
-        "StaminaRegenSystem",
-        "StatusEffectSystem",
-        "LeechSeedFxSystem",
-        "WildSpawnSystem",
-        "WildAISystem",
-        "MoveInputSystem",
-        "MoveCombatSystem",
-        "ProjectileSystem",
-        "ItemUseSystem",
-        "PokemonHudSystem",
-        "PlayerRespawnSystem"
-      ]
-    },
-    {
       "name": "Main",
       "hz": 0.0,
       "enabled": false,
@@ -34,15 +12,35 @@
     },
     {
       "name": "AI",
-      "hz": 59.999996185302734,
+      "hz": 10.0,
       "enabled": true,
       "systems": []
     },
     {
       "name": "Timed",
-      "hz": 5.0,
-      "enabled": false,
-      "systems": []
+      "hz": 20.0,
+      "enabled": true,
+      "systems": [
+        "PlayerRespawnSystem",
+        "StatusEffectSystem",
+        "StaminaRegenSystem"
+      ]
+    },
+    {
+      "name": "Simulation",
+      "hz": 60.0,
+      "enabled": true,
+      "systems": [
+        "PokemonStatsSystem",
+        "LeechSeedFxSystem",
+        "WildSpawnSystem",
+        "WildAISystem",
+        "MoveInputSystem",
+        "MoveCombatSystem",
+        "ProjectileSystem",
+        "ItemUseSystem",
+        "fg::PhysicsSystem"
+      ]
     },
     {
       "name": "HierarchyPropagation",
@@ -57,9 +55,12 @@
       "hz": 0.0,
       "enabled": true,
       "systems": [
+        "ThirdPersonCameraSystem",
+        "CharacterMovementSystem",
+        "LeechSeedRenderSystem",
+        "PokemonHudSystem",
         "fg::AnimationSystem",
-        "fg::RenderSystem",
-        "LeechSeedRenderSystem"
+        "fg::RenderSystem"
       ]
     }
   ]

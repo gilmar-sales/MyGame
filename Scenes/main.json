@@ -3,9 +3,9 @@
   "editorCamera": {
     "transform": {
       "position": [
-        -4.020556449890137,
-        3.7979278564453125,
-        6.285877704620361
+        4.096369743347168,
+        3.806731939315796,
+        10.315092086791992
       ],
       "scale": [
         1.0,
@@ -13,10 +13,10 @@
         1.0
       ],
       "rotation": [
-        0.9202895760536194,
-        -0.18789273500442505,
-        -0.3362305462360382,
-        -0.06864716857671738
+        0.9860420823097229,
+        -0.16287244856357574,
+        -0.034087348729372025,
+        -0.005630479659885168
       ]
     },
     "fovDegrees": 57.050662994384766,
@@ -1080,7 +1080,7 @@
       "billboard": null,
       "particles": null,
       "healthBar": {
-        "fill": 1.0,
+        "fill": 0.0,
         "width": 0.8500000238418579,
         "height": 0.07999999821186066,
         "offset": [
@@ -1337,7 +1337,7 @@
               "kind": "Float",
               "boolValue": null,
               "intValue": null,
-              "floatValue": 96.99968719482422,
+              "floatValue": 100.0,
               "stringValue": null,
               "vec": null
             },
@@ -1882,9 +1882,9 @@
       "name": "Main Camera",
       "transform": {
         "position": [
-          4.0,
-          3.0,
-          4.0
+          0.0,
+          3.6363277435302734,
+          7.706339359283447
         ],
         "scale": [
           1.0,
@@ -1892,10 +1892,10 @@
           1.0
         ],
         "rotation": [
-          0.8965564966201782,
-          -0.2230244129896164,
-          0.37136587500572205,
-          0.09237972646951675
+          0.987688422203064,
+          -0.15643444657325745,
+          0.0,
+          0.0
         ]
       },
       "mesh": null,
@@ -2107,10 +2107,10 @@
       },
       "animator": {
         "modelSource": "Models/bulbasaur.glb",
-        "clipName": "model_skeleton|001walk",
-        "timeSec": 0.36420249938964844,
+        "clipName": "model_skeleton|001jump_l",
+        "timeSec": 0.0,
         "speed": 1.0,
-        "playing": false,
+        "playing": true,
         "loop": true,
         "useGpu": false,
         "previewInEdit": false,
@@ -2203,7 +2203,7 @@
               "name": "hp",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 15,
+              "intValue": 22,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -2212,7 +2212,7 @@
               "name": "attack",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 15,
+              "intValue": 18,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -2221,7 +2221,7 @@
               "name": "defense",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 15,
+              "intValue": 17,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -2230,7 +2230,7 @@
               "name": "spAttack",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 15,
+              "intValue": 19,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -2239,7 +2239,7 @@
               "name": "spDefense",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 15,
+              "intValue": 18,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -2248,7 +2248,7 @@
               "name": "speed",
               "kind": "Int64",
               "boolValue": null,
-              "intValue": 15,
+              "intValue": 18,
               "floatValue": null,
               "stringValue": null,
               "vec": null
@@ -2354,7 +2354,7 @@
               "kind": "Float",
               "boolValue": null,
               "intValue": null,
-              "floatValue": 0.0,
+              "floatValue": 800.0,
               "stringValue": null,
               "vec": null
             },
@@ -2363,7 +2363,7 @@
               "kind": "Float",
               "boolValue": null,
               "intValue": null,
-              "floatValue": 0.0,
+              "floatValue": 800.0,
               "stringValue": null,
               "vec": null
             },
@@ -2372,7 +2372,7 @@
               "kind": "Float",
               "boolValue": null,
               "intValue": null,
-              "floatValue": 96.99968719482422,
+              "floatValue": 100.0,
               "stringValue": null,
               "vec": null
             },
